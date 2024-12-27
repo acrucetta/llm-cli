@@ -11,7 +11,7 @@ CONFIG_PATH = Path.home() / ".config" / "llm-cli" / "config.yml"
 
 def load_config():
     if not CONFIG_PATH.exists():
-        return {"provider": "anthropic", "model": "claude-3-5-sonnet-20241022"}
+        return {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"}
     return yaml.safe_load(CONFIG_PATH.read_text())
 
 def save_config(config):
