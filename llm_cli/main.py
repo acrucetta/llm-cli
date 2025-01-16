@@ -6,6 +6,7 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.syntax import Syntax
 from .providers import PROVIDERS
+from pathlib import Path
 
 CONFIG_PATH = Path.home() / ".config" / "llm_cli" / "config.yml"
 
@@ -19,6 +20,19 @@ def load_config():
 def save_config(config):
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.write_text(yaml.dump(config))
+
+
+def read_directory(dir: str, context=None) -> str:
+    if not context:
+        context = ""
+    files = [f.name for f in Path(dir).iterdir() if f.is_file()]
+    dirs = [f.name for f in Path(dir).iterdir() if f.is_dir()]
+    for file in files:
+        with open(file, "r") as f:
+            context += f.read()
+    for dir in dirs:
+        context = read_directory(dir, context)
+    return context
 
 
 def format_response(text: str) -> list:
@@ -58,7 +72,8 @@ def cli():
 @click.option("--provider", help="LLM provider to use")
 @click.option("--model", help="Model to use")
 @click.option("-f", "--file", help="File to use as context")
-def ask(prompt, provider, model, file):
+@click.option("-d", "--dir", help="Directory to use as context, use . for current dir")
+def ask(prompt, provider, model, file, dir):
     config = load_config()
     provider = provider or config["provider"]
     model = model or config.get("model")
@@ -74,6 +89,10 @@ def ask(prompt, provider, model, file):
         with open(file, "r") as f:
             file_content = f.read()
             prompt += f"FILE CONTEXT:\n{file_content}"
+
+    if dir:
+        dir_context = read_directory(dir)
+        prompt += f"DIRECTORY CONTEXT:\n{dir_context}"
 
     response = llm.query(prompt)
     if response:
