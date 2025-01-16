@@ -57,7 +57,7 @@ def cli():
 @click.argument("prompt")
 @click.option("--provider", help="LLM provider to use")
 @click.option("--model", help="Model to use")
-@click.option("-f", "--file", help="Model to use")
+@click.option("-f", "--file", help="File to use as context")
 def ask(prompt, provider, model, file):
     config = load_config()
     provider = provider or config["provider"]
