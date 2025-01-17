@@ -34,12 +34,13 @@ def read_directory(dir: str, context=None) -> str:
         for file_path in files:
             try:
                 # Skip binary files and common non-text extensions
-                if file_path.suffix.lower() in ['.pyc', '.pyo', '.so', '.dll', '.bin']:
+                file_extension = file_path.split(".")[-1]
+                if file_extension in ['pyc', 'pyo', 'so', 'dll', 'bin']:
                     continue
-                with file_path.open('r', encoding='utf-8') as f:
+                with open(f"{dir}/{file_path}", 'r', encoding='utf-8') as f:
                     context += f.read()
             except (UnicodeDecodeError, PermissionError, OSError) as e:
-                click.echo(f"Warning: Could not read {file_path}: {str(e)}", err=True)
+                click.echo(f"Warning: Could not read {dir}/{file_path}: {str(e)}", err=True)
                 continue
         for subdir in dirs:
             try:
