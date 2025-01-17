@@ -6,6 +6,7 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.syntax import Syntax
 from .providers import PROVIDERS
+from pathlib import Path
 
 CONFIG_PATH = Path.home() / ".config" / "llm_cli" / "config.yml"
 
@@ -19,6 +20,40 @@ def load_config():
 def save_config(config):
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.write_text(yaml.dump(config))
+
+
+def read_directory(dir: str, context=None) -> str:
+    if not context:
+        context = ""
+    try:
+        dir_path = Path(dir)
+        files = [f.name for f in dir_path.iterdir() if f.is_file()]
+        dirs = [f.name for f in dir_path.iterdir() if f.is_dir()]
+        
+        # Read files
+        for file_path in files:
+            try:
+                # Skip binary files and common non-text extensions
+                if file_path.suffix.lower() in ['.pyc', '.pyo', '.so', '.dll', '.bin']:
+                    continue
+                with file_path.open('r', encoding='utf-8') as f:
+                    context += f.read()
+            except (UnicodeDecodeError, PermissionError, OSError) as e:
+                click.echo(f"Warning: Could not read {file_path}: {str(e)}", err=True)
+                continue
+        for subdir in dirs:
+            try:
+                context = read_directory(subdir, context)
+            except (PermissionError, OSError) as e:
+                click.echo(f"Warning: Could not access directory {subdir}: {str(e)}", err=True)
+                continue
+        return context
+    except PermissionError as e:
+        click.echo(f"Error: Permission denied accessing {dir_path}: {str(e)}", err=True)
+        return context
+    except OSError as e:
+        click.echo(f"Error: Could not read directory {dir_path}: {str(e)}", err=True)
+        return context
 
 
 def format_response(text: str) -> list:
@@ -58,7 +93,8 @@ def cli():
 @click.option("--provider", help="LLM provider to use")
 @click.option("--model", help="Model to use")
 @click.option("-f", "--file", help="File to use as context")
-def ask(prompt, provider, model, file):
+@click.option("-d", "--dir", help="Directory to use as context, use . for current dir")
+def ask(prompt, provider, model, file, dir):
     config = load_config()
     provider = provider or config["provider"]
     model = model or config.get("model")
@@ -74,6 +110,10 @@ def ask(prompt, provider, model, file):
         with open(file, "r") as f:
             file_content = f.read()
             prompt += f"FILE CONTEXT:\n{file_content}"
+
+    if dir:
+        dir_context = read_directory(dir)
+        prompt += f"DIRECTORY CONTEXT:\n{dir_context}"
 
     response = llm.query(prompt)
     if response:
