@@ -25,14 +25,35 @@ def save_config(config):
 def read_directory(dir: str, context=None) -> str:
     if not context:
         context = ""
-    files = [f.name for f in Path(dir).iterdir() if f.is_file()]
-    dirs = [f.name for f in Path(dir).iterdir() if f.is_dir()]
-    for file in files:
-        with open(file, "r") as f:
-            context += f.read()
-    for dir in dirs:
-        context = read_directory(dir, context)
-    return context
+    try:
+        dir_path = Path(dir)
+        files = [f.name for f in dir_path.iterdir() if f.is_file()]
+        dirs = [f.name for f in dir_path.iterdir() if f.is_dir()]
+        
+        # Read files
+        for file_path in files:
+            try:
+                # Skip binary files and common non-text extensions
+                if file_path.suffix.lower() in ['.pyc', '.pyo', '.so', '.dll', '.bin']:
+                    continue
+                with file_path.open('r', encoding='utf-8') as f:
+                    context += f.read()
+            except (UnicodeDecodeError, PermissionError, OSError) as e:
+                click.echo(f"Warning: Could not read {file_path}: {str(e)}", err=True)
+                continue
+        for subdir in dirs:
+            try:
+                context = read_directory(subdir, context)
+            except (PermissionError, OSError) as e:
+                click.echo(f"Warning: Could not access directory {subdir}: {str(e)}", err=True)
+                continue
+        return context
+    except PermissionError as e:
+        click.echo(f"Error: Permission denied accessing {dir_path}: {str(e)}", err=True)
+        return context
+    except OSError as e:
+        click.echo(f"Error: Could not read directory {dir_path}: {str(e)}", err=True)
+        return context
 
 
 def format_response(text: str) -> list:
