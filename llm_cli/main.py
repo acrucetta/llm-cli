@@ -11,7 +11,7 @@ from .providers import PROVIDERS
 from pathlib import Path
 
 CONFIG_PATH = Path.home() / ".config" / "llm_cli" / "config.yml"
-LOGS_PATH = Path.home() / ".config" / "llm_cli" / "config.yml"
+LOGS_PATH = Path.home() / ".config" / "llm_cli" / "logs"
 
 
 def setup_logging():
@@ -115,6 +115,7 @@ def cli():
 @click.option("-d", "--dir", help="Directory to use as context, use . for current dir")
 def ask(prompt, provider, model, file, dir):
     config = load_config()
+    setup_logging()
     provider = provider or config["provider"]
     model = model or config.get("model")
 
@@ -137,7 +138,7 @@ def ask(prompt, provider, model, file, dir):
     response = llm.query(prompt)
     if response:
         # Log the interaction
-        logging.info("Query:\n%s\nResponse:\n%s\n", prompt, response)
+        logging.info("\nQuery:%s\nResponse:\n%s\n", prompt, response)
         console = Console()
         formatted = format_response(response)
         for content in formatted:
@@ -159,6 +160,7 @@ def configure(provider, model, api_key):
         return
 
     config = load_config()
+    setup_logging()
     config["provider"] = provider
     config["model"] = model
 
