@@ -4,6 +4,7 @@ import click
 import yaml
 from pathlib import Path
 import logging
+import json
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.syntax import Syntax
@@ -14,15 +15,22 @@ CONFIG_PATH = Path.home() / ".config" / "llm_cli" / "config.yml"
 LOGS_PATH = Path.home() / ".config" / "llm_cli" / "logs"
 
 
+class JsonFormatter(logging.Formatter):
+    def format(self, record):
+        log_record = {
+            "timestamp": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "message": record.getMessage(),
+        }
+        return json.dumps(log_record)
+
+
 def setup_logging():
     LOGS_PATH.mkdir(parents=True, exist_ok=True)
-    log_file = LOGS_PATH / f"llm_cli_{datetime.now().strftime("%Y%m")}.log"
-    logging.basicConfig(
-        filename=str(log_file),
-        level=logging.INFO,
-        format="%(asctime)s %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+    log_file = LOGS_PATH / f"llm_cli_{datetime.now().strftime('%Y%m')}.log"
+    handler = logging.FileHandler(log_file)
+    handler.setFormatter(JsonFormatter())
+    logging.basicConfig(level=logging.INFO, handlers=[handler])
 
 
 def load_config():
@@ -138,7 +146,7 @@ def ask(prompt, provider, model, file, dir):
     response = llm.query(prompt)
     if response:
         # Log the interaction
-        logging.info("\nQuery:%s\nResponse:\n%s\n\n", prompt, response)
+        logging.info("\nQuery:%s\nResponse:\n%s\n", prompt, response)
         console = Console()
         formatted = format_response(response)
         for content in formatted:
@@ -150,14 +158,19 @@ def ask(prompt, provider, model, file, dir):
 
 @cli.command()
 @click.option("-n", help="Show the last N logs")
-def logs(n: int = 10):
+def logs(n):
     curr_year, curr_month = datetime.now().year, datetime.now().month
     file_name = LOGS_PATH / f"llm_cli_{str(curr_year)}{curr_month:02}.log"
     with open(file_name, "r", encoding="utf-8") as f:
-        log_file = f.read()
-        log_list = log_file.split("\n\n")[-int(n) :]
-        for log_entry in log_list:
-            click.echo(log_entry)
+        log_entries = f.readlines()
+        if n:
+            log_entries = log_entries[-int(n):]
+        else:
+            log_entries = log_entries[-10:]
+
+        for log_entry in log_entries:
+            log_dict = json.loads(log_entry)
+            click.echo(f"{log_dict['timestamp']} - {log_dict['level']}: {log_dict['message']}")
 
 
 @cli.command()
