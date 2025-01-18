@@ -1,7 +1,9 @@
+from datetime import datetime
 import os
 import click
 import yaml
 from pathlib import Path
+import logging
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.syntax import Syntax
@@ -9,6 +11,18 @@ from .providers import PROVIDERS
 from pathlib import Path
 
 CONFIG_PATH = Path.home() / ".config" / "llm_cli" / "config.yml"
+LOGS_PATH = Path.home() / ".config" / "llm_cli" / "config.yml"
+
+
+def setup_logging():
+    LOGS_PATH.mkdir(parents=True, exist_ok=True)
+    log_file = LOGS_PATH / f"llm_cli_{datetime.now().strftime("%Y%m")}.log"
+    logging.basicConfig(
+        filename=str(log_file),
+        level=logging.INFO,
+        format="%(asctime)s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
 
 def load_config():
@@ -29,24 +43,28 @@ def read_directory(dir: str, context=None) -> str:
         dir_path = Path(dir)
         files = [f.name for f in dir_path.iterdir() if f.is_file()]
         dirs = [f.name for f in dir_path.iterdir() if f.is_dir()]
-        
+
         # Read files
         for file_path in files:
             try:
                 # Skip binary files and common non-text extensions
                 file_extension = file_path.split(".")[-1]
-                if file_extension in ['pyc', 'pyo', 'so', 'dll', 'bin']:
+                if file_extension in ["pyc", "pyo", "so", "dll", "bin"]:
                     continue
-                with open(f"{dir}/{file_path}", 'r', encoding='utf-8') as f:
+                with open(f"{dir}/{file_path}", "r", encoding="utf-8") as f:
                     context += f.read()
             except (UnicodeDecodeError, PermissionError, OSError) as e:
-                click.echo(f"Warning: Could not read {dir}/{file_path}: {str(e)}", err=True)
+                click.echo(
+                    f"Warning: Could not read {dir}/{file_path}: {str(e)}", err=True
+                )
                 continue
         for subdir in dirs:
             try:
                 context = read_directory(subdir, context)
             except (PermissionError, OSError) as e:
-                click.echo(f"Warning: Could not access directory {subdir}: {str(e)}", err=True)
+                click.echo(
+                    f"Warning: Could not access directory {subdir}: {str(e)}", err=True
+                )
                 continue
         return context
     except PermissionError as e:
@@ -118,6 +136,8 @@ def ask(prompt, provider, model, file, dir):
 
     response = llm.query(prompt)
     if response:
+        # Log the interaction
+        logging.info("Query:\n%s\nResponse:\n%s\n", prompt, response)
         console = Console()
         formatted = format_response(response)
         for content in formatted:
@@ -125,6 +145,8 @@ def ask(prompt, provider, model, file, dir):
                 console.print(Markdown(content))
             else:
                 console.print(content)
+
+    # TODO: Save to log
 
 
 @cli.command()
