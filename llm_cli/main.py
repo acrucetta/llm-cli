@@ -138,7 +138,7 @@ def ask(prompt, provider, model, file, dir):
     response = llm.query(prompt)
     if response:
         # Log the interaction
-        logging.info("\nQuery:%s\nResponse:\n%s\n", prompt, response)
+        logging.info("\nQuery:%s\nResponse:\n%s\n\n", prompt, response)
         console = Console()
         formatted = format_response(response)
         for content in formatted:
@@ -147,7 +147,17 @@ def ask(prompt, provider, model, file, dir):
             else:
                 console.print(content)
 
-    # TODO: Save to log
+
+@cli.command()
+@click.option("-n", help="Show the last N logs")
+def logs(n: int = 10):
+    curr_year, curr_month = datetime.now().year, datetime.now().month
+    file_name = LOGS_PATH / f"llm_cli_{str(curr_year)}{curr_month:02}.log"
+    with open(file_name, "r", encoding="utf-8") as f:
+        log_file = f.read()
+        log_list = log_file.split("\n\n")[-int(n) :]
+        for log_entry in log_list:
+            click.echo(log_entry)
 
 
 @cli.command()
