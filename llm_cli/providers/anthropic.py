@@ -29,7 +29,7 @@ class AnthropicProvider(BaseProvider):
 
         data = {
             "model": self.model,
-            "max_tokens": 1024,
+            "max_tokens": 2048,
             "messages": [{"role": "user", "content": shortened_prompt}],
         }
 
