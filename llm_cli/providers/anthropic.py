@@ -1,6 +1,7 @@
 import os
+from typing import Optional
+from .base import BaseProvider, SYSTEM_PROMPT
 import requests
-from .base import BaseProvider
 
 
 class AnthropicProvider(BaseProvider):
@@ -10,17 +11,21 @@ class AnthropicProvider(BaseProvider):
         if not self.api_key:
             raise ValueError("ANTHROPIC_API_KEY environment variable not set")
 
-    def query(self, prompt: str) -> str:
-        # Keep answers short.
-        shortened_prompt = (
-            "Your answer will be displayed in the command line, make it concice yet informative. See the prompt below.\n"
-            + prompt
-        )
+    def query(
+        self,
+        prompt: str,
+        file_context: Optional[str] = None,
+    ) -> str:
         headers = {
             "x-api-key": self.api_key,
             "content-type": "application/json",
             "anthropic-version": "2023-06-01",
         }
+
+        shortened_prompt = SYSTEM_PROMPT.replace(
+            "{{FILES_CONTEXT}}", file_context or ""
+        )
+        shortened_prompt = shortened_prompt.replace("{{USER_QUERY}}", prompt)
 
         data = {
             "model": self.model,
@@ -33,4 +38,3 @@ class AnthropicProvider(BaseProvider):
         )
         response.raise_for_status()
         return response.json()["content"][0]["text"]
-

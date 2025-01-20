@@ -44,6 +44,17 @@ def save_config(config):
     CONFIG_PATH.write_text(yaml.dump(config))
 
 
+def extract_content_between_tags(content, start_tag, end_tag) -> str | None:
+    start = content.find(start_tag)
+    if start == -1:
+        raise Exception("Start tag not found")
+    start += len(start_tag)
+    end = content.find(end_tag, start)
+    if end == -1:
+        raise Exception("End tag not found")
+    return content[start:end].strip()
+
+
 def read_directory(dir: str, context=None) -> str:
     if not context:
         context = ""
@@ -134,21 +145,22 @@ def ask(prompt, provider, model, file, dir):
     provider_cls = PROVIDERS[provider]
     llm = provider_cls(model=model)
 
+    file_context = ""
+
     if file:
         with open(file, "r") as f:
-            file_content = f.read()
-            prompt += f"FILE CONTEXT:\n{file_content}"
+            file_context += f.read()
 
     if dir:
-        dir_context = read_directory(dir)
-        prompt += f"DIRECTORY CONTEXT:\n{dir_context}"
+        file_context += read_directory(dir)
 
-    response = llm.query(prompt)
+    response = llm.query(prompt, file_context)
     if response:
         # Log the interaction
-        logging.info("\nQuery:%s\nResponse:\n%s\n", prompt, response)
+        answer = extract_content_between_tags(response, "<answer>", "</answer>")
+        logging.info("\nQuery:%s\nResponse:\n%s\n", prompt, answer)
         console = Console()
-        formatted = format_response(response)
+        formatted = format_response(answer)
         for content in formatted:
             if isinstance(content, str):
                 console.print(Markdown(content))
@@ -164,13 +176,15 @@ def logs(n):
     with open(file_name, "r", encoding="utf-8") as f:
         log_entries = f.readlines()
         if n:
-            log_entries = log_entries[-int(n):]
+            log_entries = log_entries[-int(n) :]
         else:
             log_entries = log_entries[-10:]
 
         for log_entry in log_entries:
             log_dict = json.loads(log_entry)
-            click.echo(f"{log_dict['timestamp']} - {log_dict['level']}: {log_dict['message']}")
+            click.echo(
+                f"{log_dict['timestamp']} - {log_dict['level']}: {log_dict['message']}"
+            )
 
 
 @cli.command()
