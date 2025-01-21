@@ -63,10 +63,9 @@ def ask(prompt, provider, model, file, dir, tag):
     response = llm.query(prompt, file_context, prompt_type)
     if response:
         # Log the interaction
-        answer = extract_content_between_tags(response, "<answer>", "</answer>")
-        logging.info({"query": prompt, "response": answer})
+        logging.info({"query": prompt, "response": response})
         console = Console()
-        formatted = format_response(answer)
+        formatted = format_response(response)
         for content in formatted:
             if isinstance(content, str):
                 console.print(Markdown(content))
