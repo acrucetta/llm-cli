@@ -6,6 +6,7 @@ import json
 from rich.console import Console
 from rich.markdown import Markdown
 from .providers import PROVIDERS
+from .providers.prompts import Prompts
 from .utils import (
     extract_content_between_tags,
     format_response,
@@ -29,7 +30,10 @@ def cli():
 @click.option("--model", help="Model to use")
 @click.option("-f", "--file", help="File to use as context")
 @click.option("-d", "--dir", help="Directory to use as context, use . for current dir")
-def ask(prompt, provider, model, file, dir):
+@click.option(
+    "-t", "--tag", help="Tag used for the prompt types, available now: 'primer' "
+)
+def ask(prompt, provider, model, file, dir, tag):
     config = load_config()
     setup_logging()
     provider = provider or config["provider"]
@@ -51,7 +55,12 @@ def ask(prompt, provider, model, file, dir):
     if dir:
         file_context += read_directory(dir)
 
-    response = llm.query(prompt, file_context)
+    prompt_type = Prompts.MAIN
+    if tag:
+        if tag == "primer":
+            prompt_type = Prompts.UNIVERSAL_PRIMER
+
+    response = llm.query(prompt, file_context, prompt_type)
     if response:
         # Log the interaction
         answer = extract_content_between_tags(response, "<answer>", "</answer>")

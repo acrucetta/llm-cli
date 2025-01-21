@@ -1,6 +1,7 @@
 import os
 from typing import Optional
-from .base import BaseProvider, SYSTEM_PROMPT
+from .base import BaseProvider
+from .prompts import MAIN_PROMPT, UNIVERSAL_PRIMER, Prompts
 import requests
 
 
@@ -15,6 +16,7 @@ class AnthropicProvider(BaseProvider):
         self,
         prompt: str,
         file_context: Optional[str] = None,
+        prompt_type: Optional[Prompts] = None,
     ) -> str:
         headers = {
             "x-api-key": self.api_key,
@@ -22,16 +24,19 @@ class AnthropicProvider(BaseProvider):
             "anthropic-version": "2023-06-01",
         }
 
-        shortened_prompt = SYSTEM_PROMPT.replace(
-            "{{FILES_CONTEXT}}", file_context or ""
-        )
-        shortened_prompt = shortened_prompt.replace("{{USER_QUERY}}", prompt)
+        user_prompt = MAIN_PROMPT.replace("{{FILES_CONTEXT}}", file_context or "")
+        user_prompt = user_prompt.replace("{{USER_QUERY}}", prompt)
 
         data = {
             "model": self.model,
             "max_tokens": 2048,
-            "messages": [{"role": "user", "content": shortened_prompt}],
+            "messages": [{"role": "user", "content": user_prompt}],
         }
+
+        if prompt_type:
+            match prompt_type:
+                case Prompts.UNIVERSAL_PRIMER:
+                    data["system"] = Prompts.UNIVERSAL_PRIMER.value
 
         response = requests.post(
             "https://api.anthropic.com/v1/messages", headers=headers, json=data
