@@ -1,7 +1,7 @@
 import os
 from typing import Optional
 from .base import BaseProvider
-from .prompts import MAIN_PROMPT, UNIVERSAL_PRIMER, USER_PROMPT, Prompts
+from .prompts import MAIN_PROMPT, UNIVERSAL_PRIMER, Prompts
 import requests
 
 
@@ -24,7 +24,7 @@ class AnthropicProvider(BaseProvider):
             "anthropic-version": "2023-06-01",
         }
 
-        user_prompt = USER_PROMPT.replace("{{FILES_CONTEXT}}", file_context or "")
+        user_prompt = MAIN_PROMPT.replace("{{FILES_CONTEXT}}", file_context or "")
         user_prompt = user_prompt.replace("{{USER_QUERY}}", prompt)
 
         data = {
@@ -35,8 +35,6 @@ class AnthropicProvider(BaseProvider):
 
         if prompt_type:
             match prompt_type:
-                case Prompts.MAIN:
-                    data["system"] = Prompts.MAIN.value
                 case Prompts.UNIVERSAL_PRIMER:
                     data["system"] = Prompts.UNIVERSAL_PRIMER.value
 
