@@ -18,9 +18,13 @@ from .utils.io_utils import (
 from rich.table import Table
 
 
-@click.group(invoke_without_command=True)
-@click.pass_context
-@click.argument("prompt", required=False)
+@click.group()
+def cli():
+    pass
+
+
+@cli.command()
+@click.argument("prompt")
 @click.option("--provider", help="LLM provider to use")
 @click.option("--model", help="Model to use")
 @click.option("-f", "--file", help="File to use as context")
@@ -28,54 +32,46 @@ from rich.table import Table
 @click.option(
     "-t", "--tag", help="Tag used for the prompt types, available now: 'primer' "
 )
-def cli(ctx, prompt, provider, model, file, dir, tag):
-    if ctx.invoked_subcommand is not None:
+def ask(prompt, provider, model, file, dir, tag):
+    config = load_config()
+    setup_logging()
+    provider = provider or config["provider"]
+    model = model or config.get("model")
+
+    if provider not in PROVIDERS:
+        click.echo(f"Error: Provider {provider} not supported")
         return
 
-    if prompt:
-        config = load_config()
-        setup_logging()
-        provider = provider or config["provider"]
-        model = model or config.get("model")
+    provider_cls = PROVIDERS[provider]
+    llm = provider_cls(model=model)
 
-        if provider not in PROVIDERS:
-            click.echo(f"Error: Provider {provider} not supported")
-            return
+    file_context = ""
 
-        provider_cls = PROVIDERS[provider]
-        llm = provider_cls(model=model)
+    if file:
+        with open(file, "r") as f:
+            file_context += f.read()
 
-        file_context = ""
+    if dir:
+        file_context += read_directory(dir)
 
-        if file:
-            with open(file, "r") as f:
-                file_context += f.read()
-
-        if dir:
-            file_context += read_directory(dir)
-
-        prompt_type = Prompts.MAIN
-        if tag:
-            if tag == "primer":
-                prompt_type = Prompts.UNIVERSAL_PRIMER
-
-        console = Console()
-        with console.status("[bold green]Thinking...", spinner="dots"):
-            response = llm.query(prompt, file_context, prompt_type)
-
-        if response:
-            # Log the interaction
-            logging.info({"query": prompt, "response": response})
-            formatted = format_response(response)
-            for content in formatted:
-                if isinstance(content, str):
-                    console.print(Markdown(content))
-                else:
-                    console.print(content)
-    elif ctx.invoked_subcommand is None:
-        click.echo(
-            "Error: No prompt provided and no subcommand invoked. Use --help for usage."
-        )
+    prompt_type = Prompts.MAIN
+    if tag:
+        if tag == "primer":
+            prompt_type = Prompts.UNIVERSAL_PRIMER
+    
+    console = Console()
+    with console.status("[bold green]Thinking...", spinner="dots"):
+        response = llm.query(prompt, file_context, prompt_type)
+    
+    if response:
+        # Log the interaction
+        logging.info({"query": prompt, "response": response})
+        formatted = format_response(response)
+        for content in formatted:
+            if isinstance(content, str):
+                console.print(Markdown(content))
+            else:
+                console.print(content)
 
 
 @cli.command()
