@@ -1,16 +1,11 @@
+import json
+import logging
 from datetime import datetime
-import os
+from pathlib import Path
+
 import click
 import yaml
-from pathlib import Path
-import logging
-import json
-from rich.console import Console
-from rich.markdown import Markdown
 from rich.syntax import Syntax
-from .providers import PROVIDERS
-from pathlib import Path
-from rich.table import Table
 
 
 CONFIG_PATH = Path.home() / ".config" / "llm_cli" / "config.yml"

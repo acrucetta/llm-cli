@@ -7,8 +7,7 @@ from rich.console import Console
 from rich.markdown import Markdown
 from .providers import PROVIDERS
 from .providers.prompts import Prompts
-from .utils import (
-    extract_content_between_tags,
+from .utils.io_utils import (
     format_response,
     load_config,
     read_directory,
@@ -17,15 +16,14 @@ from .utils import (
     LOGS_PATH,
 )
 from rich.table import Table
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.live import Live
+from rich.panel import Panel
 
 
-@click.group()
-def cli():
-    pass
-
-
-@cli.command()
-@click.argument("prompt")
+@click.group(invoke_without_command=True)
+@click.pass_context
+@click.argument("prompt", required=True)
 @click.option("--provider", help="LLM provider to use")
 @click.option("--model", help="Model to use")
 @click.option("-f", "--file", help="File to use as context")
@@ -33,49 +31,56 @@ def cli():
 @click.option(
     "-t", "--tag", help="Tag used for the prompt types, available now: 'primer' "
 )
-def ask(prompt, provider, model, file, dir, tag):
-    config = load_config()
-    setup_logging()
-    provider = provider or config["provider"]
-    model = model or config.get("model")
+def cli(ctx, prompt, provider, model, file, dir, tag):
+    if ctx.invoked_subcommand is None and prompt:
+        config = load_config()
+        setup_logging()
+        provider = provider or config["provider"]
+        model = model or config.get("model")
 
-    if provider not in PROVIDERS:
-        click.echo(f"Error: Provider {provider} not supported")
-        return
+        if provider not in PROVIDERS:
+            click.echo(f"Error: Provider {provider} not supported")
+            return
 
-    provider_cls = PROVIDERS[provider]
-    llm = provider_cls(model=model)
+        provider_cls = PROVIDERS[provider]
+        llm = provider_cls(model=model)
 
-    file_context = ""
+        file_context = ""
 
-    if file:
-        with open(file, "r") as f:
-            file_context += f.read()
+        if file:
+            with open(file, "r") as f:
+                file_context += f.read()
 
-    if dir:
-        file_context += read_directory(dir)
+        if dir:
+            file_context += read_directory(dir)
 
-    prompt_type = Prompts.MAIN
-    if tag:
-        if tag == "primer":
-            prompt_type = Prompts.UNIVERSAL_PRIMER
+        prompt_type = Prompts.MAIN
+        if tag:
+            if tag == "primer":
+                prompt_type = Prompts.UNIVERSAL_PRIMER
 
-    response = llm.query(prompt, file_context, prompt_type)
-    if response:
-        # Log the interaction
-        logging.info({"query": prompt, "response": response})
         console = Console()
-        formatted = format_response(response)
-        for content in formatted:
-            if isinstance(content, str):
-                console.print(Markdown(content))
-            else:
-                console.print(content)
+        with console.status("[bold green]Thinking...", spinner="dots"):
+            response = llm.query(prompt, file_context, prompt_type)
+
+        if response:
+            # Log the interaction
+            logging.info({"query": prompt, "response": response})
+            formatted = format_response(response)
+            for content in formatted:
+                if isinstance(content, str):
+                    console.print(Markdown(content))
+                else:
+                    console.print(content)
+    elif ctx.invoked_subcommand is None:
+        click.echo(
+            "Error: No prompt provided and no subcommand invoked. Use --help for usage."
+        )
 
 
 @cli.command()
 @click.option("-n", help="Show the last N logs")
-def logs(n):
+def history(n):
     curr_year, curr_month = datetime.now().year, datetime.now().month
     file_name = LOGS_PATH / f"llm_cli_{str(curr_year)}{curr_month:02}.log"
     with open(file_name, "r", encoding="utf-8") as f:

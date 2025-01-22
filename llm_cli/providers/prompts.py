@@ -47,20 +47,6 @@ You may receive the following inputs:
 2. User query:
 <user_query>
 </user_query>
-
-Present your answer in the following format:
-
-<answer>
-[Your detailed answer here]
-</answer>
-
-Example output structure (purely for format demonstration, do not copy content):
-
-<answer>
-The file 'example.py' contains a function named 'calculate_average' that takes a list of numbers as input and returns their average. This function first checks if the list is empty to avoid division by zero errors. If the list is not empty, it uses the built-in sum() function to add up all the numbers and then divides by the length of the list to calculate the average.
-
-This implementation is efficient for small to medium-sized lists, but for very large datasets, you might want to consider using a streaming algorithm to reduce memory usage.
-</answer>
 """
 
 
@@ -90,18 +76,4 @@ Instructions:
    - A list of relevant files and their contents (if provided)
    - The explanation approach you'll use (explanatory or concise)
    - Key points you plan to address in your response
-
-6. Present your answer in the following format:
-
-<answer>
-[Your detailed answer here]
-</answer>
-
-Example output structure (purely for format demonstration, do not copy content):
-
-<answer>
-The file 'example.py' contains a function named 'calculate_average' that takes a list of numbers as input and returns their average. This function first checks if the list is empty to avoid division by zero errors. If the list is not empty, it uses the built-in sum() function to add up all the numbers and then divides by the length of the list to calculate the average.
-
-This implementation is efficient for small to medium-sized lists, but for very large datasets, you might want to consider using a streaming algorithm to reduce memory usage.
-</answer>
 """
