@@ -16,14 +16,11 @@ from .utils.io_utils import (
     LOGS_PATH,
 )
 from rich.table import Table
-from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.live import Live
-from rich.panel import Panel
 
 
 @click.group(invoke_without_command=True)
 @click.pass_context
-@click.argument("prompt", required=True)
+@click.argument("prompt", required=False)
 @click.option("--provider", help="LLM provider to use")
 @click.option("--model", help="Model to use")
 @click.option("-f", "--file", help="File to use as context")
@@ -32,7 +29,10 @@ from rich.panel import Panel
     "-t", "--tag", help="Tag used for the prompt types, available now: 'primer' "
 )
 def cli(ctx, prompt, provider, model, file, dir, tag):
-    if ctx.invoked_subcommand is None and prompt:
+    if ctx.invoked_subcommand is not None:
+        return
+
+    if prompt:
         config = load_config()
         setup_logging()
         provider = provider or config["provider"]
