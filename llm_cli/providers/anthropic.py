@@ -1,7 +1,7 @@
 import os
 from typing import Optional
 from .base import BaseProvider
-from .prompts import MAIN_PROMPT, UNIVERSAL_PRIMER, USER_PROMPT, Prompts
+from .prompts import MAIN_PROMPT, UNIVERSAL_PRIMER, USER_PROMPT, CONCISE, Prompts
 import requests
 
 
@@ -36,11 +36,11 @@ class AnthropicProvider(BaseProvider):
         if prompt_type:
             match prompt_type:
                 case Prompts.MAIN:
-                    data["system"] = Prompts.MAIN.value
+                    data["system"] = MAIN_PROMPT
                 case Prompts.UNIVERSAL_PRIMER:
-                    data["system"] = Prompts.UNIVERSAL_PRIMER.value
+                    data["system"] = UNIVERSAL_PRIMER
                 case Prompts.CONCISE:
-                    data["system"] = Prompts.CONCISE.value
+                    data["system"] = CONCISE
 
         response = requests.post(
             "https://api.anthropic.com/v1/messages", headers=headers, json=data
