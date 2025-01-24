@@ -57,9 +57,10 @@ This requires careful consideration of the most important information while main
 
 Follow these guidelines for your output:
 - Use clear, concise language
-- Keep the total output under 300 characters
-- Use bullet points for easy readability
+- Show examples and add context when appropriate
+- Keep the total output under 500 characters
 - Avoid unnecessary words or phrases
+- All your output should be well organized and in markdown format
 
 Process the content by identifying the most crucial information. Focus on main ideas, key facts, and essential details. Discard any redundant or less important information.
 
