@@ -30,7 +30,9 @@ def cli():
 @click.option("-f", "--file", help="File to use as context")
 @click.option("-d", "--dir", help="Directory to use as context, use . for current dir")
 @click.option(
-    "-t", "--tag", help="Tag used for the prompt types, available now: 'primer' "
+    "-t",
+    "--tag",
+    help="Tag used for the prompt types, available now: 'primer', 'concise'",
 )
 def ask(prompt, provider, model, file, dir, tag):
     config = load_config()
@@ -55,14 +57,19 @@ def ask(prompt, provider, model, file, dir, tag):
         file_context += read_directory(dir)
 
     prompt_type = Prompts.MAIN
+    
     if tag:
         if tag == "primer":
             prompt_type = Prompts.UNIVERSAL_PRIMER
-    
+        elif tag == "concise":
+            prompt_type = Prompts.CONCISE
+        else:
+            click.echo("Couldn't find the given prompt, using the deafult one.")
+
     console = Console()
     with console.status("[bold green]Thinking...", spinner="dots"):
         response = llm.query(prompt, file_context, prompt_type)
-    
+
     if response:
         # Log the interaction
         logging.info({"query": prompt, "response": response})

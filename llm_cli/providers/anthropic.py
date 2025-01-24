@@ -39,6 +39,8 @@ class AnthropicProvider(BaseProvider):
                     data["system"] = Prompts.MAIN.value
                 case Prompts.UNIVERSAL_PRIMER:
                     data["system"] = Prompts.UNIVERSAL_PRIMER.value
+                case Prompts.CONCISE:
+                    data["system"] = Prompts.CONCISE.value
 
         response = requests.post(
             "https://api.anthropic.com/v1/messages", headers=headers, json=data

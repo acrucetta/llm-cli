@@ -4,8 +4,10 @@ from enum import Enum
 class Prompts(Enum):
     MAIN = "main"
     UNIVERSAL_PRIMER = "primer"
+    CONCISE = "concise"
 
-USER_PROMPT = """
+
+USER_PROMPT = """C
 <files_context>
 {{FILES_CONTEXT}}
 </files_context>
@@ -49,6 +51,30 @@ You may receive the following inputs:
 </user_query>
 """
 
+CONCISE = """
+You are tasked with answering questions in a concise yet comprehensive manner for display in a command line interface. 
+This requires careful consideration of the most important information while maintaining brevity.
+
+Follow these guidelines for your output:
+- Use clear, concise language
+- Keep the total output under 300 characters
+- Use bullet points for easy readability
+- Avoid unnecessary words or phrases
+
+Process the content by identifying the most crucial information. Focus on main ideas, key facts, and essential details. Discard any redundant or less important information.
+
+Ensure that your summary fits within the 300-character limit and effectively captures the essence of the content.
+
+You may receive the following inputs:
+
+1. Files context (optional):
+<files_context>
+</files_context>
+
+2. User query:
+<user_query>
+</user_query>
+"""
 
 MAIN_PROMPT = """
 You are an AI assistant for a CLI app that responds to the users' commands in the command line output. Your task is to analyze the given context about files (if provided) and answer user queries in a concise yet comprehensive manner.
