@@ -75,24 +75,16 @@ def read_directory(dir: str, context=None) -> str:
                 with open(f"{dir}/{file_path}", "r", encoding="utf-8") as f:
                     context += f.read()
             except (UnicodeDecodeError, PermissionError, OSError) as e:
-                click.echo(
-                    f"Warning: Could not read {dir}/{file_path}: {str(e)}", err=True
-                )
                 continue
         for subdir in dirs:
             try:
                 context = read_directory(subdir, context)
             except (PermissionError, OSError) as e:
-                click.echo(
-                    f"Warning: Could not access directory {subdir}: {str(e)}", err=True
-                )
                 continue
         return context
     except PermissionError as e:
-        click.echo(f"Error: Permission denied accessing {dir_path}: {str(e)}", err=True)
         return context
     except OSError as e:
-        click.echo(f"Error: Could not read directory {dir_path}: {str(e)}", err=True)
         return context
 
 

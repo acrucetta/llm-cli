@@ -16,6 +16,8 @@ from .utils.io_utils import (
     LOGS_PATH,
 )
 from rich.table import Table
+from rich.live import Live
+from rich.text import Text
 
 
 @click.group()
@@ -57,7 +59,7 @@ def ask(prompt, provider, model, file, dir, tag):
         file_context += read_directory(dir)
 
     prompt_type = Prompts.MAIN
-    
+
     if tag:
         if tag == "primer":
             prompt_type = Prompts.UNIVERSAL_PRIMER
@@ -67,14 +69,17 @@ def ask(prompt, provider, model, file, dir, tag):
             click.echo("Couldn't find the given prompt, using the default one.")
 
     console = Console()
-    buffer = []
-    
-    for token in llm.query_stream(prompt, file_context, prompt_type):
-        buffer.append(token)
-        console.print(token, end="")
-    
+    buffer = ""
+
+    # Initialize Live context with empty Markdown
+    with Live(Markdown(buffer), console=console, refresh_per_second=20, screen=False) as live:
+        for token in llm.query_stream(prompt, file_context, prompt_type):
+            buffer += token
+            # Update the Live display with the new Markdown content
+            live.update(Markdown(buffer))
+
     # Log the complete interaction
-    response = "".join(buffer)
+    response = str(buffer)
     logging.info({"query": prompt, "response": response})
 
 
