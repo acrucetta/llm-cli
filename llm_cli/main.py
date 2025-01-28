@@ -64,21 +64,18 @@ def ask(prompt, provider, model, file, dir, tag):
         elif tag == "concise":
             prompt_type = Prompts.CONCISE
         else:
-            click.echo("Couldn't find the given prompt, using the deafult one.")
+            click.echo("Couldn't find the given prompt, using the default one.")
 
     console = Console()
-    with console.status("[bold green]Thinking...", spinner="dots"):
-        response = llm.query(prompt, file_context, prompt_type)
-
-    if response:
-        # Log the interaction
-        logging.info({"query": prompt, "response": response})
-        formatted = format_response(response)
-        for content in formatted:
-            if isinstance(content, str):
-                console.print(Markdown(content))
-            else:
-                console.print(content)
+    buffer = []
+    
+    for token in llm.query_stream(prompt, file_context, prompt_type):
+        buffer.append(token)
+        console.print(token, end="")
+    
+    # Log the complete interaction
+    response = "".join(buffer)
+    logging.info({"query": prompt, "response": response})
 
 
 @cli.command()
