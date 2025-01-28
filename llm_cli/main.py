@@ -72,7 +72,7 @@ def ask(prompt, provider, model, file, dir, tag):
     buffer = ""
 
     # Initialize Live context with empty Markdown
-    with Live(Markdown(buffer), console=console, refresh_per_second=20, screen=False) as live:
+    with Live(Markdown(buffer), console=console, auto_refresh=True, screen=False) as live:
         for token in llm.query_stream(prompt, file_context, prompt_type):
             buffer += token
             # Update the Live display with the new Markdown content

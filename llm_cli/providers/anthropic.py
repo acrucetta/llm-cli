@@ -102,13 +102,4 @@ class AnthropicProvider(BaseProvider):
                     delta = json_response['delta']
                     if delta['type'] == 'text_delta':
                         text = delta['text']
-                        
-                        if '<analysis>' in text:
-                            in_analysis = True
-                            continue
-                        elif '</analysis>' in text:
-                            in_analysis = False
-                            continue
-                        
-                        if not in_analysis:
-                            yield text
+                        yield text
