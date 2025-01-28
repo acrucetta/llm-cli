@@ -1,7 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Optional
-from enum import Enum
+from typing import Optional, List
 from .prompts import Prompts
+
+
+class Message:
+    def __init__(self, role: str, content: str):
+        self.role = role
+        self.content = content
 
 
 class BaseProvider(ABC):
@@ -14,5 +19,6 @@ class BaseProvider(ABC):
         prompt: str,
         file_context: Optional[str] = None,
         prompt_type: Optional[Prompts] = None,
+        message_history: Optional[List[Message]] = None,
     ) -> str:
         pass

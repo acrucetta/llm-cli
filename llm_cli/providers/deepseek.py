@@ -1,11 +1,11 @@
 import os
-from typing import Optional, List
-from .base import BaseProvider, Message
+from typing import Optional
+from .base import BaseProvider
 from .prompts import MAIN_PROMPT, UNIVERSAL_PRIMER, USER_PROMPT, CONCISE, Prompts
 import requests
 
 
-class AnthropicProvider(BaseProvider):
+class DeepSeekProvider(BaseProvider):
     def __init__(self, model="claude-3-5-sonnet-20241022"):
         super().__init__(model)
         self.api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -17,7 +17,6 @@ class AnthropicProvider(BaseProvider):
         prompt: str,
         file_context: Optional[str] = None,
         prompt_type: Optional[Prompts] = None,
-        message_history: Optional[List[Message]] = None,
     ) -> str:
         headers = {
             "x-api-key": self.api_key,
@@ -25,20 +24,13 @@ class AnthropicProvider(BaseProvider):
             "anthropic-version": "2023-06-01",
         }
 
-        # Format the current prompt with context
-        current_content = USER_PROMPT.replace("{{FILES_CONTEXT}}", file_context or "")
-        current_content = current_content.replace("{{USER_QUERY}}", prompt)
-
-        # Build messages array
-        messages = []
-        if message_history:
-            messages.extend([{"role": msg.role, "content": msg.content} for msg in message_history])
-        messages.append({"role": "user", "content": current_content})
+        user_prompt = USER_PROMPT.replace("{{FILES_CONTEXT}}", file_context or "")
+        user_prompt = user_prompt.replace("{{USER_QUERY}}", prompt)
 
         data = {
             "model": self.model,
             "max_tokens": 2048,
-            "messages": messages,
+            "messages": [{"role": "user", "content": user_prompt}],
         }
 
         if prompt_type:
