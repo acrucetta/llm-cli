@@ -38,6 +38,7 @@ def cli():
     help="Tag used for the prompt types, available now: 'primer', 'concise'",
 )
 def ask(prompt, provider, model, file, dir, tag):
+    """Ask a quick question"""
     config = load_config()
     setup_logging()
     provider = provider or config["provider"]
@@ -89,6 +90,7 @@ def ask(prompt, provider, model, file, dir, tag):
 @cli.command()
 @click.option("-n", help="Show the last N logs")
 def history(n):
+    """See your chat history"""
     curr_year, curr_month = datetime.now().year, datetime.now().month
     file_name = LOGS_PATH / f"llm_cli_{str(curr_year)}{curr_month:02}.log"
     with open(file_name, "r", encoding="utf-8") as f:
