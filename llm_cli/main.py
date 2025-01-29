@@ -6,6 +6,7 @@ import json
 from rich.console import Console
 from rich.markdown import Markdown
 from .providers import PROVIDERS
+from .providers.base import Message
 from .providers.prompts import Prompts
 from .utils.io_utils import (
     format_response,
@@ -72,7 +73,9 @@ def ask(prompt, provider, model, file, dir, tag):
     buffer = ""
 
     # Initialize Live context with empty Markdown
-    with Live(Markdown(buffer), console=console, auto_refresh=True, screen=False) as live:
+    with Live(
+        Markdown(buffer), console=console, auto_refresh=True, screen=False
+    ) as live:
         for token in llm.query_stream(prompt, file_context, prompt_type):
             buffer += token
             # Update the Live display with the new Markdown content
@@ -133,6 +136,77 @@ def configure(provider, model, api_key):
 
     save_config(config)
     click.echo("Configuration saved")
+
+
+@cli.command()
+@click.option("--provider", help="LLM provider to use")
+@click.option("--model", help="Model to use")
+@click.option("-f", "--file", help="File to use as context")
+@click.option("-d", "--dir", help="Directory to use as context, use . for current dir")
+@click.option(
+    "-t",
+    "--tag",
+    help="Tag used for the prompt types, available now: 'primer', 'concise'",
+)
+def chat(provider, model, file, dir, tag):
+    """Start an interactive chat session with the LLM."""
+    config = load_config()
+    setup_logging()
+    provider = provider or config["provider"]
+    model = model or config.get("model")
+
+    if provider not in PROVIDERS:
+        click.echo(f"Error: Provider {provider} not supported")
+        return
+
+    provider_cls = PROVIDERS[provider]
+    llm = provider_cls(model=model)
+
+    file_context = ""
+    if file:
+        with open(file, "r") as f:
+            file_context += f.read()
+
+    if dir:
+        file_context += read_directory(dir)
+
+    prompt_type = Prompts.REPL
+    console = Console()
+    message_history = []
+    console.print(
+        "[bold blue]Chat session started. Type 'exit' to end the conversation.[/]"
+    )
+    while True:
+        try:
+            user_input = click.prompt("\n>>>", type=str)
+
+            if user_input.lower() in ["exit", "quit"]:
+                console.print("[bold blue]Ending chat session[/]")
+                break
+
+            response = ""
+            with Live(
+                Markdown(response), console=console, auto_refresh=True, screen=False
+            ) as live:
+                for token in llm.query_stream(
+                    user_input, file_context, prompt_type, message_history
+                ):
+                    response += token
+                    live.update(Markdown(response))
+
+            if response:
+                logging.info({"query": user_input, "response": response})
+                message_history.append(Message("user", user_input))
+                message_history.append(Message("assistant", response))
+        except click.exceptions.Abort:  # Handles Ctrl+C
+            console.print("[bold blue] Goodbye! ")
+            return
+        except EOFError:  # Handles Ctrl+D
+            console.print("[bold blue] Goodbye! ")
+            return
+        except Exception as e:
+            console.print(f"[bold red]Error: {str(e)}[/]")
+            continue
 
 
 if __name__ == "__main__":

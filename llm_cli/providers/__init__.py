@@ -1,5 +1,4 @@
 from .anthropic import AnthropicProvider
+from .deepseek import DeepSeekProvider
 
-PROVIDERS = {
-    'anthropic': AnthropicProvider,
-}
+PROVIDERS = {"anthropic": AnthropicProvider, "deepseek": DeepSeekProvider}
