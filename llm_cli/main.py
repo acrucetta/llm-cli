@@ -198,7 +198,12 @@ def chat(provider, model, file, dir, tag):
                 logging.info({"query": user_input, "response": response})
                 message_history.append(Message("user", user_input))
                 message_history.append(Message("assistant", response))
-
+        except click.exceptions.Abort:  # Handles Ctrl+C
+            console.print("[bold blue] Goodbye! ")
+            return
+        except EOFError:  # Handles Ctrl+D
+            console.print("[bold blue] Goodbye! ")
+            return
         except Exception as e:
             console.print(f"[bold red]Error: {str(e)}[/]")
             continue
