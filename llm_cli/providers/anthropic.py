@@ -1,7 +1,7 @@
 import os
 from typing import Optional, List, Generator
 from .base import BaseProvider, Message
-from .prompts import MAIN_PROMPT, UNIVERSAL_PRIMER, USER_PROMPT, CONCISE, Prompts
+from .prompts import MAIN_PROMPT, REPL, UNIVERSAL_PRIMER, USER_PROMPT, CONCISE, Prompts
 import requests
 import json
 
@@ -52,6 +52,8 @@ class AnthropicProvider(BaseProvider):
                     data["system"] = UNIVERSAL_PRIMER
                 case Prompts.CONCISE:
                     data["system"] = CONCISE
+                case Prompts.REPL:
+                    data["system"] = REPL 
 
         response = requests.post(
             "https://api.anthropic.com/v1/messages", headers=headers, json=data
@@ -77,13 +79,11 @@ class AnthropicProvider(BaseProvider):
             messages.extend(
                 [{"role": msg.role, "content": msg.content} for msg in message_history]
             )
-        messages.append(
-            {
-                "role": "user",
-                "content": USER_PROMPT.replace("{{FILES_CONTEXT}}", file_context or ""),
-            }
-        )
-        messages.append({"role": "user", "content": prompt})
+        
+        # Format the current prompt with context
+        current_content = USER_PROMPT.replace("{{FILES_CONTEXT}}", file_context or "")
+        current_content = current_content.replace("{{USER_QUERY}}", prompt)
+        messages.append({"role": "user", "content": current_content})
 
         data = {
             "model": self.model,
@@ -100,6 +100,8 @@ class AnthropicProvider(BaseProvider):
                     data["system"] = UNIVERSAL_PRIMER
                 case Prompts.CONCISE:
                     data["system"] = CONCISE
+                case Prompts.REPL:
+                    data["system"] = REPL 
 
         response = requests.post(
             "https://api.anthropic.com/v1/messages",
@@ -108,7 +110,7 @@ class AnthropicProvider(BaseProvider):
             stream=True,
         )
         response.raise_for_status()
-
+        
         for line in response.iter_lines():
             if line:
                 line_text = line.decode("utf-8")

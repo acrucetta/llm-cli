@@ -170,45 +170,34 @@ def chat(provider, model, file, dir, tag):
     if dir:
         file_context += read_directory(dir)
 
-    prompt_type = Prompts.MAIN
-    if tag:
-        if tag == "primer":
-            prompt_type = Prompts.UNIVERSAL_PRIMER
-        elif tag == "concise":
-            prompt_type = Prompts.CONCISE
-        else:
-            click.echo("Couldn't find the given prompt, using the default one.")
-
+    prompt_type = Prompts.REPL
     console = Console()
     message_history = []
-    buffer = ""
-
     console.print(
         "[bold blue]Chat session started. Type 'exit' to end the conversation.[/]"
     )
-
     while True:
         try:
-            user_input = click.prompt("\n>", type=str)
+            user_input = click.prompt("\n>>>", type=str)
 
             if user_input.lower() in ["exit", "quit"]:
                 console.print("[bold blue]Ending chat session[/]")
                 break
 
-            with Live(Markdown(buffer), console=console, auto_refresh=True, screen=False) as live:
+            response = ""
+            with Live(
+                Markdown(response), console=console, auto_refresh=True, screen=False
+            ) as live:
                 for token in llm.query_stream(
                     user_input, file_context, prompt_type, message_history
                 ):
-                    buffer += token
-                    live.update(Markdown(buffer))
+                    response += token
+                    live.update(Markdown(response))
 
-            if buffer:
-                # Log the interaction
-                logging.info({"query": user_input, "response": buffer})
-
-                # Add to message history
+            if response:
+                logging.info({"query": user_input, "response": response})
                 message_history.append(Message("user", user_input))
-                message_history.append(Message("assistant", buffer))
+                message_history.append(Message("assistant", response))
 
         except Exception as e:
             console.print(f"[bold red]Error: {str(e)}[/]")
