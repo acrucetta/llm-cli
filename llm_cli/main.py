@@ -17,6 +17,8 @@ from .utils.io_utils import (
     LOGS_PATH,
 )
 from rich.table import Table
+from rich.live import Live
+from rich.text import Text
 
 
 @click.group()
@@ -65,21 +67,21 @@ def ask(prompt, provider, model, file, dir, tag):
         elif tag == "concise":
             prompt_type = Prompts.CONCISE
         else:
-            click.echo("Couldn't find the given prompt, using the deafult one.")
+            click.echo("Couldn't find the given prompt, using the default one.")
 
     console = Console()
-    with console.status("[bold green]Thinking...", spinner="dots"):
-        response = llm.query(prompt, file_context, prompt_type)
+    buffer = ""
 
-    if response:
-        # Log the interaction
-        logging.info({"query": prompt, "response": response})
-        formatted = format_response(response)
-        for content in formatted:
-            if isinstance(content, str):
-                console.print(Markdown(content))
-            else:
-                console.print(content)
+    # Initialize Live context with empty Markdown
+    with Live(Markdown(buffer), console=console, auto_refresh=True, screen=False) as live:
+        for token in llm.query_stream(prompt, file_context, prompt_type):
+            buffer += token
+            # Update the Live display with the new Markdown content
+            live.update(Markdown(buffer))
+
+    # Log the complete interaction
+    response = str(buffer)
+    logging.info({"query": prompt, "response": response})
 
 
 @cli.command()
