@@ -73,7 +73,9 @@ def ask(prompt, provider, model, file, dir, tag):
     buffer = ""
 
     # Initialize Live context with empty Markdown
-    with Live(Markdown(buffer), console=console, auto_refresh=True, screen=False) as live:
+    with Live(
+        Markdown(buffer), console=console, auto_refresh=True, screen=False
+    ) as live:
         for token in llm.query_stream(prompt, file_context, prompt_type):
             buffer += token
             # Update the Live display with the new Markdown content
@@ -179,45 +181,35 @@ def chat(provider, model, file, dir, tag):
 
     console = Console()
     message_history = []
-    
-    console.print("[bold blue]Chat session started. Type 'exit' to end the conversation.[/]")
-    
+    buffer = ""
+
+    console.print(
+        "[bold blue]Chat session started. Type 'exit' to end the conversation.[/]"
+    )
+
     while True:
         try:
-            user_input = click.prompt("\nYou", type=str)
-            
-            if user_input.lower() in ['exit', 'quit']:
+            user_input = click.prompt("\n>", type=str)
+
+            if user_input.lower() in ["exit", "quit"]:
                 console.print("[bold blue]Ending chat session[/]")
                 break
 
-            with console.status("[bold green]Thinking...", spinner="dots"):
-                response = llm.query(
-                    user_input, 
-                    file_context, 
-                    prompt_type,
-                    message_history
-                )
+            with Live(Markdown(buffer), console=console, auto_refresh=True, screen=False) as live:
+                for token in llm.query_stream(
+                    user_input, file_context, prompt_type, message_history
+                ):
+                    buffer += token
+                    live.update(Markdown(buffer))
 
-            if response:
+            if buffer:
                 # Log the interaction
-                logging.info({"query": user_input, "response": response})
-                
+                logging.info({"query": user_input, "response": buffer})
+
                 # Add to message history
                 message_history.append(Message("user", user_input))
-                message_history.append(Message("assistant", response))
-                
-                # Format and display response
-                formatted = format_response(response)
-                console.print("\n[bold cyan]Assistant:[/]")
-                for content in formatted:
-                    if isinstance(content, str):
-                        console.print(Markdown(content))
-                    else:
-                        console.print(content)
+                message_history.append(Message("assistant", buffer))
 
-        except KeyboardInterrupt:
-            console.print("\n[bold blue]Chat session ended by user.[/]")
-            break
         except Exception as e:
             console.print(f"[bold red]Error: {str(e)}[/]")
             continue

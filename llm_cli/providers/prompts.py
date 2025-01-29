@@ -7,7 +7,7 @@ class Prompts(Enum):
     CONCISE = "concise"
 
 
-USER_PROMPT = """C
+USER_PROMPT = """
 <files_context>
 {{FILES_CONTEXT}}
 </files_context>

@@ -33,7 +33,9 @@ class AnthropicProvider(BaseProvider):
         # Build messages array
         messages = []
         if message_history:
-            messages.extend([{"role": msg.role, "content": msg.content} for msg in message_history])
+            messages.extend(
+                [{"role": msg.role, "content": msg.content} for msg in message_history]
+            )
         messages.append({"role": "user", "content": current_content})
 
         data = {
@@ -62,6 +64,7 @@ class AnthropicProvider(BaseProvider):
         prompt: str,
         file_context: Optional[str] = None,
         prompt_type: Optional[Prompts] = None,
+        message_history: Optional[List[Message]] = None,
     ) -> Generator[str, None, None]:
         headers = {
             "x-api-key": self.api_key,
@@ -69,14 +72,24 @@ class AnthropicProvider(BaseProvider):
             "anthropic-version": "2023-06-01",
         }
 
-        user_prompt = USER_PROMPT.replace("{{FILES_CONTEXT}}", file_context or "")
-        user_prompt = user_prompt.replace("{{USER_QUERY}}", prompt)
+        messages = []
+        if message_history:
+            messages.extend(
+                [{"role": msg.role, "content": msg.content} for msg in message_history]
+            )
+        messages.append(
+            {
+                "role": "user",
+                "content": USER_PROMPT.replace("{{FILES_CONTEXT}}", file_context or ""),
+            }
+        )
+        messages.append({"role": "user", "content": prompt})
 
         data = {
             "model": self.model,
             "max_tokens": 2048,
             "stream": True,
-            "messages": [{"role": "user", "content": user_prompt}],
+            "messages": messages,
         }
 
         if prompt_type:
@@ -92,22 +105,21 @@ class AnthropicProvider(BaseProvider):
             "https://api.anthropic.com/v1/messages",
             headers=headers,
             json=data,
-            stream=True
+            stream=True,
         )
         response.raise_for_status()
 
-        in_analysis = False
         for line in response.iter_lines():
             if line:
-                line_text = line.decode('utf-8')
-                if not line_text.startswith('data: '):
+                line_text = line.decode("utf-8")
+                if not line_text.startswith("data: "):
                     continue
-                
-                json_str = line_text.replace('data: ', '')
+
+                json_str = line_text.replace("data: ", "")
                 json_response = json.loads(json_str)
-                
-                if json_response['type'] == 'content_block_delta':
-                    delta = json_response['delta']
-                    if delta['type'] == 'text_delta':
-                        text = delta['text']
+
+                if json_response["type"] == "content_block_delta":
+                    delta = json_response["delta"]
+                    if delta["type"] == "text_delta":
+                        text = delta["text"]
                         yield text

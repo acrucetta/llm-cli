@@ -1,10 +1,6 @@
 from abc import ABC, abstractmethod
-<<<<<<< HEAD
-from typing import Optional, List
-=======
-from typing import Optional, Generator
+from typing import Optional, Generator, List
 from enum import Enum
->>>>>>> c5bf2f5a1fa8d178a4942305fdb4a1da0d9ca4b1
 from .prompts import Prompts
 
 
@@ -34,5 +30,6 @@ class BaseProvider(ABC):
         prompt: str,
         file_context: Optional[str] = None,
         prompt_type: Optional[Prompts] = None,
+        message_history: Optional[List[Message]] = None,
     ) -> Generator[str, None, None]:
         pass
