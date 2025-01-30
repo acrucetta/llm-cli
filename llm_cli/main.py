@@ -153,7 +153,7 @@ def configure(provider, model, api_key):
 @click.option("--provider", help="LLM provider to use")
 @click.option("--model", help="Model to use")
 @click.option("-f", "--file", help="File to use as context")
-@click.option("-d", "--dir", help="Directory to use as context, use . for current dir")
+@click.option("-d", "--directory", help="Directory to use as context, use . for current dir")
 def chat(provider, model, file, directory):
     """Start an interactive chat session with the LLM."""
     config = load_config()
