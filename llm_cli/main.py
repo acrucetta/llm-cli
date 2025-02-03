@@ -1,13 +1,16 @@
 from datetime import datetime
+import hashlib
 import os
 import click
 import logging
 import json
 from rich.console import Console
 from rich.markdown import Markdown
+
 from .providers import PROVIDERS
 from .providers.base import Message
 from .providers.prompts import Prompts
+from .utils.embeddings import build_codebase_index, retrieve_relevant_chunks
 from .utils.io_utils import (
     load_config,
     read_directory,
@@ -35,7 +38,8 @@ def cli():
     "--tag",
     help="Tag used for the prompt types, available now: 'primer', 'concise'",
 )
-def ask(prompt, provider, model, files, dir, tag):
+@click.option("-c", "--codebase", help="Path to codebase to index and use as context")
+def ask(prompt, provider, model, files, dir, tag, codebase):
     """Ask a quick question"""
     config = load_config()
     setup_logging()
@@ -58,6 +62,25 @@ def ask(prompt, provider, model, files, dir, tag):
 
     if dir:
         file_context += read_directory(dir)
+
+    if codebase:
+        # The name or path of the index file can be something like .cache/<hash_of_codebase>.pkl
+        # so that if the codebase path is the same, we reuse the same index.
+        # We'll just do a simple hash for uniqueness:
+        codebase_hash = hashlib.md5(codebase.encode("utf-8")).hexdigest()
+        index_path = os.path.join(".cache", f"codebase_index_{codebase_hash}.pkl")
+        os.makedirs(".cache", exist_ok=True)
+
+        # Build or load index
+        index = build_codebase_index(codebase, index_path)
+
+        # Retrieve top chunks for the user's query
+        relevant_chunks = retrieve_relevant_chunks(prompt, index, top_k=3)
+
+        # Add them to the file_context
+        for chunk in relevant_chunks:
+            print("Adding chunk from:", chunk["file_path"])
+            file_context += f"\n\n# From file: {chunk['file_path']}\n{chunk['text']}\n"
 
     prompt_type = Prompts.MAIN
 
@@ -153,8 +176,11 @@ def configure(provider, model, api_key):
 @click.option("--provider", help="LLM provider to use")
 @click.option("--model", help="Model to use")
 @click.option("-f", "--file", help="File to use as context")
-@click.option("-d", "--directory", help="Directory to use as context, use . for current dir")
-def chat(provider, model, file, directory):
+@click.option(
+    "-d", "--directory", help="Directory to use as context, use . for current dir"
+)
+@click.option("-c", "--codebase", help="Path to codebase to index and use as context")
+def chat(provider, model, file, directory, codebase):
     """Start an interactive chat session with the LLM."""
     config = load_config()
     setup_logging()
@@ -167,8 +193,12 @@ def chat(provider, model, file, directory):
 
     provider_cls = PROVIDERS[provider]
     llm = provider_cls(model=model)
+    prompt_type = Prompts.REPL
+    console = Console()
+    message_history = []
 
     file_context = ""
+
     if file:
         with open(file, "r") as f:
             file_context += f.read()
@@ -176,9 +206,18 @@ def chat(provider, model, file, directory):
     if directory:
         file_context += read_directory(directory)
 
-    prompt_type = Prompts.REPL
-    console = Console()
-    message_history = []
+    if codebase:
+        with console.status("[bold yellow]Indexing codebase, please wait...[/]"):
+            # The name or path of the index file can be something like .cache/<hash_of_codebase>.pkl
+            # so that if the codebase path is the same, we reuse the same index.
+            # We'll just do a simple hash for uniqueness:
+            codebase_hash = hashlib.md5(codebase.encode("utf-8")).hexdigest()
+            index_path = os.path.join(".cache", f"codebase_index_{codebase_hash}.pkl")
+            os.makedirs(".cache", exist_ok=True)
+
+            # Build or load index
+            index = build_codebase_index(codebase, index_path)
+
     console.print(
         "[bold blue]Chat session started. Type 'exit' to end the conversation.[/]"
     )
@@ -192,23 +231,39 @@ def chat(provider, model, file, directory):
                 console.print("[bold blue]Ending chat session[/]")
                 break
 
+            if codebase:
+                # Retrieve top chunks for the user's query
+                relevant_chunks = retrieve_relevant_chunks(user_input, index, top_k=3)
+
+                # Add them to the file_context
+                for chunk in relevant_chunks:
+                    print("Adding chunk from:", chunk["file_path"])
+                    file_context += (
+                        f"\n\n# From file: {chunk['file_path']}\n{chunk['text']}\n"
+                    )
+
             response = ""
             with Live(
                 Markdown(response), console=console, auto_refresh=True, screen=False
             ) as live:
                 if files_provided:
                     for token in llm.query_stream(
-                        prompt=user_input, prompt_type=prompt_type, message_history=message_history
+                        prompt=user_input,
+                        prompt_type=prompt_type,
+                        message_history=message_history,
                     ):
                         response += token
                         live.update(Markdown(response))
                 else:
                     for token in llm.query_stream(
-                        prompt=user_input, file_context=file_context, prompt_type=prompt_type, message_history=message_history
+                        prompt=user_input,
+                        file_context=file_context,
+                        prompt_type=prompt_type,
+                        message_history=message_history,
                     ):
                         response += token
                         live.update(Markdown(response))
-                    files_provided=True
+                    files_provided = True
 
             if response:
                 logging.info({"query": user_input, "response": response})
