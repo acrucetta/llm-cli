@@ -18,7 +18,6 @@ class BaseProvider(ABC):
     def query(
         self,
         prompt: str,
-        file_context: Optional[str] = None,
         prompt_type: Optional[Prompts] = None,
         message_history: Optional[List[Message]] = None,
     ) -> str:
@@ -28,7 +27,6 @@ class BaseProvider(ABC):
     def query_stream(
         self,
         prompt: str,
-        file_context: Optional[str] = None,
         prompt_type: Optional[Prompts] = None,
         message_history: Optional[List[Message]] = None,
     ) -> Generator[str, None, None]:

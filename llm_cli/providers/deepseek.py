@@ -16,7 +16,6 @@ class DeepSeekProvider(BaseProvider):
     def query(
         self,
         prompt: str,
-        file_context: Optional[str] = None,
         prompt_type: Optional[Prompts] = None,
         message_history: Optional[List[Message]] = None,
     ) -> str:
@@ -25,17 +24,13 @@ class DeepSeekProvider(BaseProvider):
             "content-type": "application/json",
         }
 
-        # Format the current prompt with context
-        current_content = USER_PROMPT.replace("{{FILES_CONTEXT}}", file_context or "")
-        current_content = current_content.replace("{{USER_QUERY}}", prompt)
-
         # Build messages array
         messages = []
         if message_history:
             messages.extend(
                 [{"role": msg.role, "content": msg.content} for msg in message_history]
             )
-        messages.append({"role": "user", "content": current_content})
+        messages.append({"role": "user", "content": prompt})
 
         data = {
             "model": self.model,
@@ -52,7 +47,7 @@ class DeepSeekProvider(BaseProvider):
                 case Prompts.CONCISE:
                     data["system"] = CONCISE
                 case Prompts.REPL:
-                    data["system"] = REPL 
+                    data["system"] = REPL
 
         response = requests.post(
             "https://api.deepseek.com/chat/completions", headers=headers, json=data
@@ -63,7 +58,6 @@ class DeepSeekProvider(BaseProvider):
     def query_stream(
         self,
         prompt: str,
-        file_context: Optional[str] = None,
         prompt_type: Optional[Prompts] = None,
         message_history: Optional[List[Message]] = None,
     ) -> Generator[str, None, None]:
@@ -77,11 +71,7 @@ class DeepSeekProvider(BaseProvider):
             messages.extend(
                 [{"role": msg.role, "content": msg.content} for msg in message_history]
             )
-        
-        # Format the current prompt with context
-        current_content = USER_PROMPT.replace("{{FILES_CONTEXT}}", file_context or "")
-        current_content = current_content.replace("{{USER_QUERY}}", prompt)
-        messages.append({"role": "user", "content": current_content})
+        messages.append({"role": "user", "content": prompt})
 
         data = {
             "model": self.model,
@@ -99,7 +89,7 @@ class DeepSeekProvider(BaseProvider):
                 case Prompts.CONCISE:
                     data["system"] = CONCISE
                 case Prompts.REPL:
-                    data["system"] = REPL 
+                    data["system"] = REPL
 
         response = requests.post(
             "https://api.deepseek.com/chat/completions",

@@ -24,12 +24,34 @@ def cli():
     pass
 
 
+def format_prompt_with_context(prompt: str, file_context: str) -> str:
+    """Format the prompt with file context and return the complete formatted prompt."""
+    if not file_context:
+        return prompt
+
+    formatted_context = f"""
+        <files_context>
+        {file_context}
+        </files_context>
+
+        <user_query>
+        {prompt}
+        </user_query>
+        """
+    return formatted_context
+
+
 @cli.command()
 @click.argument("prompt")
 @click.option("--provider", help="LLM provider to use")
 @click.option("--model", help="Model to use")
 @click.option("-f", "--files", help="Files to use as context", multiple=True)
-@click.option("-d", "--dir", help="Directory to use as context, use . for current dir")
+@click.option(
+    "-d",
+    "--dir",
+    help="Directory to use as context, use . for current dir",
+    multiple=True,
+)
 @click.option(
     "-t",
     "--tag",
@@ -50,17 +72,16 @@ def ask(prompt, provider, model, files, dir, tag):
     llm = provider_cls(model=model)
 
     file_context = ""
-
     if files:
         for file in files:
             with open(file, "r") as f:
                 file_context += f.read()
 
     if dir:
-        file_context += read_directory(dir)
+        for d in dir:
+            file_context += read_directory(d)
 
     prompt_type = Prompts.MAIN
-
     if tag:
         if tag == "primer":
             prompt_type = Prompts.UNIVERSAL_PRIMER
@@ -69,6 +90,7 @@ def ask(prompt, provider, model, files, dir, tag):
         else:
             click.echo("Couldn't find the given prompt, using the default one.")
 
+    formatted_prompt = format_prompt_with_context(prompt, file_context)
     console = Console()
     buffer = ""
 
@@ -76,14 +98,14 @@ def ask(prompt, provider, model, files, dir, tag):
     with Live(
         Markdown(buffer), console=console, auto_refresh=True, screen=False
     ) as live:
-        for token in llm.query_stream(prompt, file_context, prompt_type):
+        for token in llm.query_stream(formatted_prompt, prompt_type=prompt_type):
             buffer += token
             # Update the Live display with the new Markdown content
             live.update(Markdown(buffer))
 
     # Log the complete interaction
     response = str(buffer)
-    logging.info({"query": prompt, "response": response})
+    logging.info({"query": formatted_prompt, "response": response})
 
 
 @cli.command()
@@ -153,8 +175,8 @@ def configure(provider, model, api_key):
 @click.option("--provider", help="LLM provider to use")
 @click.option("--model", help="Model to use")
 @click.option("-f", "--file", help="File to use as context")
-@click.option("-d", "--directory", help="Directory to use as context, use . for current dir")
-def chat(provider, model, file, directory):
+@click.option("-d", "--dir", help="Directory to use as context, use . for current dir")
+def chat(provider, model, file, dir):
     """Start an interactive chat session with the LLM."""
     config = load_config()
     setup_logging()
@@ -173,8 +195,9 @@ def chat(provider, model, file, directory):
         with open(file, "r") as f:
             file_context += f.read()
 
-    if directory:
-        file_context += read_directory(directory)
+    if dir:
+        for d in dir:
+            file_context += read_directory(d)
 
     prompt_type = Prompts.REPL
     console = Console()
@@ -183,7 +206,6 @@ def chat(provider, model, file, directory):
         "[bold blue]Chat session started. Type 'exit' to end the conversation.[/]"
     )
 
-    files_provided = False
     while True:
         try:
             user_input = click.prompt("\n>>>", type=str)
@@ -192,28 +214,24 @@ def chat(provider, model, file, directory):
                 console.print("[bold blue]Ending chat session[/]")
                 break
 
+            formatted_prompt = format_prompt_with_context(user_input, file_context)
             response = ""
             with Live(
                 Markdown(response), console=console, auto_refresh=True, screen=False
             ) as live:
-                if files_provided:
-                    for token in llm.query_stream(
-                        prompt=user_input, prompt_type=prompt_type, message_history=message_history
-                    ):
-                        response += token
-                        live.update(Markdown(response))
-                else:
-                    for token in llm.query_stream(
-                        prompt=user_input, file_context=file_context, prompt_type=prompt_type, message_history=message_history
-                    ):
-                        response += token
-                        live.update(Markdown(response))
-                    files_provided=True
+                for token in llm.query_stream(
+                    prompt=formatted_prompt,
+                    prompt_type=prompt_type,
+                    message_history=message_history,
+                ):
+                    response += token
+                    live.update(Markdown(response))
 
             if response:
-                logging.info({"query": user_input, "response": response})
-                message_history.append(Message("user", user_input))
+                logging.info({"query": formatted_prompt, "response": response})
+                message_history.append(Message("user", formatted_prompt))
                 message_history.append(Message("assistant", response))
+
         except click.exceptions.Abort:  # Handles Ctrl+C
             console.print("[bold blue] Goodbye! ")
             return
