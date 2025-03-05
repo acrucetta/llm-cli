@@ -7,7 +7,7 @@ import json
 
 
 class AnthropicProvider(BaseProvider):
-    def __init__(self, model="claude-3-5-sonnet-20241022"):
+    def __init__(self, model="claude-3-7-sonnet-20250219"):
         super().__init__(model)
         self.api_key = os.getenv("ANTHROPIC_API_KEY")
         if not self.api_key:
