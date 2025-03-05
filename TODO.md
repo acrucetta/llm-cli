@@ -1,5 +1,10 @@
 Misc Features
 
+✅ Change commands:
+- llm for chat
+- llm -p "one off prompt"
+- llm "prompt" to start with the prompt in chat
+
 Ask Features
 - [] Add a search capability for finding most relevant documents in an embedding
 - [] Add ability to pass multiple files with -f e.g., -f file1.c file2.c "prompt"

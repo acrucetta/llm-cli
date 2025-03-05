@@ -19,9 +19,29 @@ from rich.table import Table
 from rich.live import Live
 
 
-@click.group()
-def cli():
-    pass
+@click.group(invoke_without_command=True)
+@click.pass_context
+@click.argument("prompt", required=False)
+@click.option("-p", "--prompt-text", help="One-off prompt to send to the LLM")
+def cli(ctx, prompt, prompt_text):
+    """LLM CLI - Chat with LLMs from your terminal
+
+    Usage:
+      llm                    Start an interactive chat session
+      llm -p "prompt"        Send a one-off prompt and get a response
+      llm "prompt"           Start an interactive chat with an initial prompt
+    """
+    if ctx.invoked_subcommand is None:
+        # If no subcommand is called, default to chat
+        if prompt_text:
+            # One-off prompt with -p flag
+            ctx.invoke(ask, prompt=prompt_text)
+        elif prompt:
+            # Start chat with initial prompt
+            ctx.invoke(chat, initial_prompt=prompt)
+        else:
+            # Start chat with no initial prompt
+            ctx.invoke(chat, initial_prompt=None)
 
 
 def format_prompt_with_context(prompt: str, file_context: str) -> str:
@@ -48,7 +68,7 @@ def format_prompt_with_context(prompt: str, file_context: str) -> str:
 @click.option("-f", "--files", help="Files to use as context", multiple=True)
 @click.option(
     "-d",
-    "--dir",
+    "--directory",
     help="Directory to use as context, use . for current dir",
     multiple=True,
 )
@@ -57,7 +77,7 @@ def format_prompt_with_context(prompt: str, file_context: str) -> str:
     "--tag",
     help="Tag used for the prompt types, available now: 'primer', 'concise'",
 )
-def ask(prompt, provider, model, files, dir, tag):
+def ask(prompt, provider, model, files, directory, tag):
     """Ask a quick question"""
     config = load_config()
     setup_logging()
@@ -77,8 +97,8 @@ def ask(prompt, provider, model, files, dir, tag):
             with open(file, "r") as f:
                 file_context += f.read()
 
-    if dir:
-        for d in dir:
+    if directory:
+        for d in directory:
             file_context += read_directory(d)
 
     prompt_type = Prompts.MAIN
@@ -175,8 +195,13 @@ def configure(provider, model, api_key):
 @click.option("--provider", help="LLM provider to use")
 @click.option("--model", help="Model to use")
 @click.option("-f", "--file", help="File to use as context")
-@click.option("-d", "--dir", help="Directory to use as context, use . for current dir")
-def chat(provider, model, file, dir):
+@click.option(
+    "-d", "--directory", help="Directory to use as context, use . for current dir"
+)
+@click.option(
+    "--initial-prompt", help="Initial prompt to start the chat with", required=False
+)
+def chat(provider, model, file, directory, initial_prompt=None):
     """Start an interactive chat session with the LLM."""
     config = load_config()
     setup_logging()
@@ -195,8 +220,8 @@ def chat(provider, model, file, dir):
         with open(file, "r") as f:
             file_context += f.read()
 
-    if dir:
-        for d in dir:
+    if directory:
+        for d in directory:
             file_context += read_directory(d)
 
     prompt_type = Prompts.REPL
@@ -205,6 +230,28 @@ def chat(provider, model, file, dir):
     console.print(
         "[bold blue]Chat session started. Type 'exit' to end the conversation.[/]"
     )
+
+    # Handle initial prompt if provided
+    if initial_prompt:
+        formatted_prompt = format_prompt_with_context(initial_prompt, file_context)
+        response = ""
+        console.print("\n[bold green]Initial prompt:[/] " + initial_prompt)
+
+        with Live(
+            Markdown(response), console=console, auto_refresh=True, screen=False
+        ) as live:
+            for token in llm.query_stream(
+                prompt=formatted_prompt,
+                prompt_type=prompt_type,
+                message_history=message_history,
+            ):
+                response += token
+                live.update(Markdown(response))
+
+        if response:
+            logging.info({"query": formatted_prompt, "response": response})
+            message_history.append(Message("user", formatted_prompt))
+            message_history.append(Message("assistant", response))
 
     while True:
         try:
