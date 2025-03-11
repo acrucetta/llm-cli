@@ -1,5 +1,4 @@
 from datetime import datetime
-import os
 import click
 import logging
 import json
@@ -9,10 +8,10 @@ from .providers import PROVIDERS
 from .providers.base import Message
 from .providers.prompts import Prompts
 from .utils.io_utils import (
+    format_prompt_with_context,
     load_config,
     read_directory,
     setup_logging,
-    save_config,
     LOGS_PATH,
 )
 from rich.table import Table
@@ -21,7 +20,6 @@ from rich.live import Live
 
 @click.group(invoke_without_command=True)
 @click.pass_context
-@click.argument("prompt", required=False)
 @click.option("-p", "--prompt-text", help="One-off prompt to send to the LLM")
 @click.option("-f", "--files", help="Files to use as context", multiple=True)
 @click.option(
@@ -35,7 +33,7 @@ from rich.live import Live
     "--tag",
     help="Tag used for the prompt types, available now: 'primer', 'concise'",
 )
-def cli(ctx, prompt, prompt_text, files=None, directory=None, tag=None):
+def cli(ctx, prompt_text, files=None, directory=None, tag=None):
     if ctx.invoked_subcommand is None:
         # If no subcommand is called, default to chat
         if prompt_text:
@@ -43,17 +41,11 @@ def cli(ctx, prompt, prompt_text, files=None, directory=None, tag=None):
             ctx.invoke(
                 ask, prompt=prompt_text, files=files, directory=directory, tag=tag
             )
-        elif prompt:
-            # Start chat with initial prompt
-            ctx.invoke(
-                chat, initial_prompt=prompt, files=files, directory=directory, tag=tag
-            )
         else:
             # Start chat with no initial prompt
             ctx.invoke(
                 chat, initial_prompt=None, files=files, directory=directory, tag=tag
             )
-
 
 
 @cli.command()
@@ -155,43 +147,14 @@ def history(n):
 
 
 @cli.command()
-@click.option(
-    "--provider",
-    prompt="Provider (anthropic/deepseek)",
-    help="LLM provider",
-    default="anthropic",
-)
-@click.option(
-    "--model",
-    prompt="Default model",
-    help="Default model to use",
-    default="claude-3-5-sonnet-20241022",
-)
-@click.option("--api-key", prompt="API key", help="Provider API key")
-def configure(provider, model, api_key):
-    if provider not in PROVIDERS:
-        click.echo(f"Error: Provider {provider} not supported")
-        return
-
-    config = load_config()
-    setup_logging()
-    config["provider"] = provider
-    config["model"] = model
-
-    env_var = f"{provider.upper()}_API_KEY"
-    with open(os.path.expanduser("~/.bashrc"), "a") as f:
-        f.write(f'\nexport {env_var}="{api_key}"\n')
-
-    save_config(config)
-    click.echo("Configuration saved")
-
-
-@cli.command()
 @click.option("--provider", help="LLM provider to use")
 @click.option("--model", help="Model to use")
-@click.option("-f", "--files", help="File to use as context")
+@click.option("-f", "--files", help="File to use as context", multiple=True)
 @click.option(
-    "-d", "--directory", help="Directory to use as context, use . for current dir"
+    "-d",
+    "--directory",
+    help="Directory to use as context, use . for current dir",
+    multiple=True,
 )
 @click.option(
     "--initial-prompt", help="Initial prompt to start the chat with", required=False
@@ -217,8 +180,9 @@ def chat(provider, model, files, directory, initial_prompt=None, tag=None):
 
     file_context = ""
     if files:
-        with open(file, "r") as f:
-            file_context += f.read()
+        for file in files:
+            with open(file, "r") as f:
+                file_context += f.read()
 
     if directory:
         for d in directory:
