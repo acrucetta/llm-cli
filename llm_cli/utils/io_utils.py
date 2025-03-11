@@ -113,3 +113,20 @@ def format_response(text: str) -> list:
             formatted_lines.append(line)
 
     return formatted_lines
+
+
+def format_prompt_with_context(prompt: str, file_context: str) -> str:
+    """Format the prompt with file context and return the complete formatted prompt."""
+    if not file_context:
+        return prompt
+
+    formatted_context = f"""
+        <files_context>
+        {file_context}
+        </files_context>
+
+        <user_query>
+        {prompt}
+        </user_query>
+        """
+    return formatted_context

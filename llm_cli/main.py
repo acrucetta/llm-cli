@@ -23,42 +23,37 @@ from rich.live import Live
 @click.pass_context
 @click.argument("prompt", required=False)
 @click.option("-p", "--prompt-text", help="One-off prompt to send to the LLM")
-def cli(ctx, prompt, prompt_text):
-    """LLM CLI - Chat with LLMs from your terminal
-
-    Usage:
-      llm                    Start an interactive chat session
-      llm -p "prompt"        Send a one-off prompt and get a response
-      llm "prompt"           Start an interactive chat with an initial prompt
-    """
+@click.option("-f", "--files", help="Files to use as context", multiple=True)
+@click.option(
+    "-d",
+    "--directory",
+    help="Directory to use as context, use . for current dir",
+    multiple=True,
+)
+@click.option(
+    "-t",
+    "--tag",
+    help="Tag used for the prompt types, available now: 'primer', 'concise'",
+)
+def cli(ctx, prompt, prompt_text, files=None, directory=None, tag=None):
     if ctx.invoked_subcommand is None:
         # If no subcommand is called, default to chat
         if prompt_text:
             # One-off prompt with -p flag
-            ctx.invoke(ask, prompt=prompt_text)
+            ctx.invoke(
+                ask, prompt=prompt_text, files=files, directory=directory, tag=tag
+            )
         elif prompt:
             # Start chat with initial prompt
-            ctx.invoke(chat, initial_prompt=prompt)
+            ctx.invoke(
+                chat, initial_prompt=prompt, files=files, directory=directory, tag=tag
+            )
         else:
             # Start chat with no initial prompt
-            ctx.invoke(chat, initial_prompt=None)
+            ctx.invoke(
+                chat, initial_prompt=None, files=files, directory=directory, tag=tag
+            )
 
-
-def format_prompt_with_context(prompt: str, file_context: str) -> str:
-    """Format the prompt with file context and return the complete formatted prompt."""
-    if not file_context:
-        return prompt
-
-    formatted_context = f"""
-        <files_context>
-        {file_context}
-        </files_context>
-
-        <user_query>
-        {prompt}
-        </user_query>
-        """
-    return formatted_context
 
 
 @cli.command()
@@ -194,14 +189,19 @@ def configure(provider, model, api_key):
 @cli.command()
 @click.option("--provider", help="LLM provider to use")
 @click.option("--model", help="Model to use")
-@click.option("-f", "--file", help="File to use as context")
+@click.option("-f", "--files", help="File to use as context")
 @click.option(
     "-d", "--directory", help="Directory to use as context, use . for current dir"
 )
 @click.option(
     "--initial-prompt", help="Initial prompt to start the chat with", required=False
 )
-def chat(provider, model, file, directory, initial_prompt=None):
+@click.option(
+    "-t",
+    "--tag",
+    help="Tag used for the prompt types, available now: 'primer', 'concise'",
+)
+def chat(provider, model, files, directory, initial_prompt=None, tag=None):
     """Start an interactive chat session with the LLM."""
     config = load_config()
     setup_logging()
@@ -216,7 +216,7 @@ def chat(provider, model, file, directory, initial_prompt=None):
     llm = provider_cls(model=model)
 
     file_context = ""
-    if file:
+    if files:
         with open(file, "r") as f:
             file_context += f.read()
 
