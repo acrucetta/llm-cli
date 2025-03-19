@@ -7,8 +7,9 @@ import json
 
 
 class DeepSeekProvider(BaseProvider):
-    def __init__(self, model="deepseek-chat"):
+    def __init__(self, model=None):
         super().__init__(model)
+        self.model = model or "deepseek-chat"
         self.api_key = os.getenv("DEEPSEEK_API_KEY")
         if not self.api_key:
             raise ValueError("DEEPSEEK_API_KEY environment variable not set")
@@ -98,7 +99,7 @@ class DeepSeekProvider(BaseProvider):
             stream=True,
         )
         response.raise_for_status()
-        
+
         for line in response.iter_lines():
             if line:
                 line_text = line.decode("utf-8")

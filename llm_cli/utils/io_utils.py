@@ -36,9 +36,21 @@ def setup_logging():
 
 
 def load_config():
+    default_config = {
+        "provider": "anthropic",
+        "provider_defaults": {
+            "anthropic": "claude-3-7-sonnet",
+            "gemini": "gemini-2.0-flash",
+            "deepseek": "deepseek-chat"
+        }
+    }
     if not CONFIG_PATH.exists():
-        return {"provider": "anthropic", "model": "claude-3-5-sonnet-20241022"}
-    return yaml.safe_load(CONFIG_PATH.read_text())
+        return default_config
+    config = yaml.safe_load(CONFIG_PATH.read_text())
+    # Ensure defaults are present even if config file exists
+    config.setdefault("provider", default_config["provider"])
+    config.setdefault("provider_defaults", default_config["provider_defaults"])
+    return config
 
 
 def save_config(config):

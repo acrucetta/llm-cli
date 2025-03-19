@@ -9,13 +9,30 @@ from .providers.base import Message
 from .providers.prompts import Prompts
 from .utils.io_utils import (
     format_prompt_with_context,
-    load_config,
     read_directory,
     setup_logging,
     LOGS_PATH,
+    load_config,
 )
 from rich.table import Table
 from rich.live import Live
+
+
+def get_provider_and_model(provider=None, model=None):
+    """Get the provider and model, using defaults from config when needed."""
+    config = load_config()
+    
+    # Determine provider
+    provider = provider or config["provider"]
+    if provider not in PROVIDERS:
+        raise click.UsageError(f"Provider {provider} not supported")
+    
+    # Determine model
+    if not model:
+        # If no model specified, use the default for the selected provider
+        model = config["provider_defaults"].get(provider)
+    
+    return provider, model
 
 
 @click.group(invoke_without_command=True)
@@ -33,25 +50,45 @@ from rich.live import Live
     "--tag",
     help="Tag used for the prompt types, available now: 'primer', 'concise'",
 )
-def cli(ctx, prompt_text, files=None, directory=None, tag=None):
+@click.option("--provider", help="LLM provider to use")
+@click.option(
+    "-m",
+    "--model",
+    help="Model to use (e.g., claude-3-7-sonnet-20250219, gemini-1.5-pro)",
+)
+def cli(
+    ctx, prompt_text, files=None, directory=None, tag=None, provider=None, model=None
+):
+    # Store provider and model in context for subcommands
+    provider, model = get_provider_and_model(provider, model)
+    ctx.ensure_object(dict)
+    ctx.obj["provider"] = provider
+    ctx.obj["model"] = model
+
     if ctx.invoked_subcommand is None:
         # If no subcommand is called, default to chat
         if prompt_text:
             # One-off prompt with -p flag
             ctx.invoke(
-                ask, prompt=prompt_text, files=files, directory=directory, tag=tag
+                ask,
+                prompt=prompt_text,
+                files=files,
+                directory=directory,
+                tag=tag,
             )
         else:
             # Start chat with no initial prompt
             ctx.invoke(
-                chat, initial_prompt=None, files=files, directory=directory, tag=tag
+                chat,
+                initial_prompt=None,
+                files=files,
+                directory=directory,
+                tag=tag,
             )
 
 
 @cli.command()
 @click.argument("prompt")
-@click.option("--provider", help="LLM provider to use")
-@click.option("--model", help="Model to use")
 @click.option("-f", "--files", help="Files to use as context", multiple=True)
 @click.option(
     "-d",
@@ -64,19 +101,13 @@ def cli(ctx, prompt_text, files=None, directory=None, tag=None):
     "--tag",
     help="Tag used for the prompt types, available now: 'primer', 'concise'",
 )
-def ask(prompt, provider, model, files, directory, tag):
+@click.pass_context
+def ask(ctx, prompt, files, directory, tag):
     """Ask a quick question"""
-    config = load_config()
     setup_logging()
-    provider = provider or config["provider"]
-    model = model or config.get("model")
-
-    if provider not in PROVIDERS:
-        click.echo(f"Error: Provider {provider} not supported")
-        return
-
-    provider_cls = PROVIDERS[provider]
-    llm = provider_cls(model=model)
+    
+    provider_cls = PROVIDERS[ctx.obj["provider"]]
+    llm = provider_cls(model=ctx.obj["model"])
 
     file_context = ""
     if files:
@@ -116,39 +147,6 @@ def ask(prompt, provider, model, files, directory, tag):
 
 
 @cli.command()
-@click.option("-n", help="Show the last N logs")
-def history(n):
-    """See your chat history"""
-    curr_year, curr_month = datetime.now().year, datetime.now().month
-    file_name = LOGS_PATH / f"llm_cli_{str(curr_year)}{curr_month:02}.log"
-    with open(file_name, "r", encoding="utf-8") as f:
-        log_entries = f.readlines()
-        if n:
-            log_entries = log_entries[-int(n) :]
-        else:
-            log_entries = log_entries[-10:]
-
-        console = Console()
-        table = Table(show_header=True, header_style="bold magenta")
-        table.add_column("Timestamp", style="dim")
-        table.add_column("Level", style="bold")
-        table.add_column("Query", style="dim")
-        table.add_column("Response", style="bold")
-
-        for log_entry in log_entries:
-            log_dict = json.loads(log_entry)
-            query = log_dict.get("query", "N/A")
-            response = log_dict.get("response", "N/A")
-            timestamp = log_dict.get("timestamp", "N/A")
-            level = log_dict.get("level", "N/A")
-            table.add_row(timestamp, level, query, response)
-
-        console.print(table)
-
-
-@cli.command()
-@click.option("--provider", help="LLM provider to use")
-@click.option("--model", help="Model to use")
 @click.option("-f", "--files", help="File to use as context", multiple=True)
 @click.option(
     "-d",
@@ -164,19 +162,13 @@ def history(n):
     "--tag",
     help="Tag used for the prompt types, available now: 'primer', 'concise'",
 )
-def chat(provider, model, files, directory, initial_prompt=None, tag=None):
+@click.pass_context
+def chat(ctx, files, directory, initial_prompt=None, tag=None):
     """Start an interactive chat session with the LLM."""
-    config = load_config()
     setup_logging()
-    provider = provider or config["provider"]
-    model = model or config.get("model")
-
-    if provider not in PROVIDERS:
-        click.echo(f"Error: Provider {provider} not supported")
-        return
-
-    provider_cls = PROVIDERS[provider]
-    llm = provider_cls(model=model)
+    
+    provider_cls = PROVIDERS[ctx.obj["provider"]]
+    llm = provider_cls(model=ctx.obj["model"])
 
     file_context = ""
     if files:
@@ -253,6 +245,38 @@ def chat(provider, model, files, directory, initial_prompt=None, tag=None):
             console.print(f"[bold red]Error: {str(e)}[/]")
             continue
 
+@cli.command()
+@click.option("-n", help="Show the last N logs")
+def history(n):
+    """See your chat history"""
+    curr_year, curr_month = datetime.now().year, datetime.now().month
+    file_name = LOGS_PATH / f"llm_cli_{str(curr_year)}{curr_month:02}.log"
+    with open(file_name, "r", encoding="utf-8") as f:
+        log_entries = f.readlines()
+        if n:
+            log_entries = log_entries[-int(n) :]
+        else:
+            log_entries = log_entries[-10:]
+
+        console = Console()
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Timestamp", style="dim")
+        table.add_column("Level", style="bold")
+        table.add_column("Query", style="dim")
+        table.add_column("Response", style="bold")
+
+        for log_entry in log_entries:
+            log_dict = json.loads(log_entry)
+            query = log_dict.get("query", "N/A")
+            response = log_dict.get("response", "N/A")
+            timestamp = log_dict.get("timestamp", "N/A")
+            level = log_dict.get("level", "N/A")
+            table.add_row(timestamp, level, query, response)
+
+        console.print(table)
+
+
+
 
 if __name__ == "__main__":
-    cli()
+    cli(obj={})  # Initialize the context object

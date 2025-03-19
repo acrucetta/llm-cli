@@ -7,8 +7,8 @@ import json
 
 
 class AnthropicProvider(BaseProvider):
-    def __init__(self, model="claude-3-7-sonnet-20250219"):
-        super().__init__(model)
+    def __init__(self, model=None):
+        self.model = model or "claude-3.7-sonnet"
         self.api_key = os.getenv("ANTHROPIC_API_KEY")
         if not self.api_key:
             raise ValueError("ANTHROPIC_API_KEY environment variable not set")
@@ -100,7 +100,7 @@ class AnthropicProvider(BaseProvider):
             stream=True,
         )
         response.raise_for_status()
-        
+
         for line in response.iter_lines():
             if line:
                 line_text = line.decode("utf-8")
