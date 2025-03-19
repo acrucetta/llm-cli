@@ -39,7 +39,7 @@ def load_config():
     default_config = {
         "provider": "anthropic",
         "provider_defaults": {
-            "anthropic": "claude-3-7-sonnet",
+            "anthropic": "claude-3-7-sonnet-20250219",
             "gemini": "gemini-2.0-flash",
             "deepseek": "deepseek-chat"
         }
