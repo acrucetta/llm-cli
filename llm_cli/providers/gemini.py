@@ -26,10 +26,10 @@ class GeminiProvider(BaseProvider):
         if message_history:
             for msg in message_history:
                 role = "user" if msg.role == "user" else "model"
-                contents.append({"role": role, "text": msg.content})
+                contents.append({"role": role, "parts": [{"text": msg.content}]})
         
         # Add current prompt
-        contents.append({"role": "user", "text": prompt})
+        contents.append({"role": "user", "parts": [{"text": prompt}]})
 
         # Handle system prompt if specified
         system_instruction = None
@@ -71,10 +71,10 @@ class GeminiProvider(BaseProvider):
         if message_history:
             for msg in message_history:
                 role = "user" if msg.role == "user" else "model"
-                contents.append({"role": role, "text": msg.content})
+                contents.append({"role": role, "parts": [{"text": msg.content}]})
         
         # Add current prompt
-        contents.append({"role": "user", "text": prompt})
+        contents.append({"role": "user", "parts": [{"text": prompt}]})
 
         # Handle system prompt if specified
         system_instruction = None
