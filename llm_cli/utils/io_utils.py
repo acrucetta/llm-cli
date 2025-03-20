@@ -41,8 +41,9 @@ def load_config():
         "provider_defaults": {
             "anthropic": "claude-3-7-sonnet-20250219",
             "gemini": "gemini-2.0-flash",
-            "deepseek": "deepseek-chat"
-        }
+            "deepseek": "deepseek-chat",
+            "openai": "o3-mini-2025-01-31",
+        },
     }
     if not CONFIG_PATH.exists():
         return default_config
