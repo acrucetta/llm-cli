@@ -1,6 +1,7 @@
 import json
 import logging
 from datetime import datetime
+import os
 from pathlib import Path
 
 import click
@@ -48,9 +49,16 @@ def load_config():
     if not CONFIG_PATH.exists():
         return default_config
     config = yaml.safe_load(CONFIG_PATH.read_text())
+
     # Ensure defaults are present even if config file exists
     config.setdefault("provider", default_config["provider"])
     config.setdefault("provider_defaults", default_config["provider_defaults"])
+
+    # Set API keys as environment variables
+    os.environ["ANTHROPIC_API_KEY"] = config["ANTHROPIC_API_KEY"]
+    os.environ["GEMINI_API_KEY"] = config["GEMINI_API_KEY"]
+    os.environ["DEEPSEEK_API_KEY"] = config["DEEPSEEK_API_KEY"]
+    os.environ["OPENAI_API_KEY"] = config["OPENAI_API_KEY"]
     return config
 
 
@@ -143,3 +151,18 @@ def format_prompt_with_context(prompt: str, file_context: str) -> str:
         </user_query>
         """
     return formatted_context
+
+
+def get_provider_and_model(provider=None, model=None):
+    """Get the provider and model, using defaults from config when needed."""
+    config = load_config()
+
+    # Determine provider
+    provider = provider or config["provider"]
+
+    # Determine model
+    if not model:
+        # If no model specified, use the default for the selected provider
+        model = config["provider_defaults"].get(provider)
+
+    return provider, model
