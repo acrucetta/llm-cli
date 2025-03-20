@@ -4,6 +4,9 @@ import logging
 import json
 from rich.console import Console
 from rich.markdown import Markdown
+from prompt_toolkit import PromptSession
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.keys import Keys
 from .providers import PROVIDERS
 from .providers.base import Message
 from .providers.prompts import Prompts
@@ -217,10 +220,26 @@ def chat(ctx, files, directory, initial_prompt=None, vibe=None):
             message_history.append(Message("user", formatted_prompt))
             message_history.append(Message("assistant", response))
 
+    # Set up key bindings for the prompt
+    kb = KeyBindings()
+    
+    @kb.add(Keys.Enter)
+    def _(event):
+        """Handle the Enter key press to submit prompt."""
+        event.current_buffer.validate_and_handle()
+        
+    @kb.add('escape', 'enter')  # Option+Enter on macOS
+    def _(event):
+        """Handle the Option+Enter key press to insert a newline."""
+        event.current_buffer.insert_text('\n')
+        
+    session = PromptSession(key_bindings=kb)
+    
     while True:
         try:
-            user_input = click.prompt("\n>>>", type=str)
-
+            # Use prompt_toolkit for multiline input
+            user_input = session.prompt("\n>>> ")
+            
             if user_input.lower() in ["exit", "quit"]:
                 console.print("[bold blue]Ending chat session[/]")
                 break
