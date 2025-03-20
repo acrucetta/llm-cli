@@ -21,17 +21,17 @@ from rich.live import Live
 def get_provider_and_model(provider=None, model=None):
     """Get the provider and model, using defaults from config when needed."""
     config = load_config()
-    
+
     # Determine provider
     provider = provider or config["provider"]
     if provider not in PROVIDERS:
         raise click.UsageError(f"Provider {provider} not supported")
-    
+
     # Determine model
     if not model:
         # If no model specified, use the default for the selected provider
         model = config["provider_defaults"].get(provider)
-    
+
     return provider, model
 
 
@@ -46,9 +46,9 @@ def get_provider_and_model(provider=None, model=None):
     multiple=True,
 )
 @click.option(
-    "-t",
-    "--tag",
-    help="Tag used for the prompt types, available now: 'primer', 'concise'",
+    "-v",
+    "--vibe",
+    help="vibe used for the prompt types, available now: 'primer', 'concise'",
 )
 @click.option("--provider", help="LLM provider to use")
 @click.option(
@@ -57,7 +57,7 @@ def get_provider_and_model(provider=None, model=None):
     help="Model to use (e.g., claude-3-7-sonnet-20250219, gemini-1.5-pro)",
 )
 def cli(
-    ctx, prompt_text, files=None, directory=None, tag=None, provider=None, model=None
+    ctx, prompt_text, files=None, directory=None, vibe=None, provider=None, model=None
 ):
     # Store provider and model in context for subcommands
     provider, model = get_provider_and_model(provider, model)
@@ -74,7 +74,7 @@ def cli(
                 prompt=prompt_text,
                 files=files,
                 directory=directory,
-                tag=tag,
+                vibe=vibe,
             )
         else:
             # Start chat with no initial prompt
@@ -83,7 +83,7 @@ def cli(
                 initial_prompt=None,
                 files=files,
                 directory=directory,
-                tag=tag,
+                vibe=vibe,
             )
 
 
@@ -97,15 +97,15 @@ def cli(
     multiple=True,
 )
 @click.option(
-    "-t",
-    "--tag",
-    help="Tag used for the prompt types, available now: 'primer', 'concise'",
+    "-v",
+    "--vibe",
+    help="vibe used for the prompt types, available now: 'primer', 'concise'",
 )
 @click.pass_context
-def ask(ctx, prompt, files, directory, tag):
+def ask(ctx, prompt, files, directory, vibe):
     """Ask a quick question"""
     setup_logging()
-    
+
     provider_cls = PROVIDERS[ctx.obj["provider"]]
     llm = provider_cls(model=ctx.obj["model"])
 
@@ -120,10 +120,10 @@ def ask(ctx, prompt, files, directory, tag):
             file_context += read_directory(d)
 
     prompt_type = Prompts.MAIN
-    if tag:
-        if tag == "primer":
+    if vibe:
+        if vibe == "primer":
             prompt_type = Prompts.UNIVERSAL_PRIMER
-        elif tag == "concise":
+        elif vibe == "concise":
             prompt_type = Prompts.CONCISE
         else:
             click.echo("Couldn't find the given prompt, using the default one.")
@@ -158,15 +158,15 @@ def ask(ctx, prompt, files, directory, tag):
     "--initial-prompt", help="Initial prompt to start the chat with", required=False
 )
 @click.option(
-    "-t",
-    "--tag",
-    help="Tag used for the prompt types, available now: 'primer', 'concise'",
+    "-v",
+    "--vibe",
+    help="vibe used for the prompt types, available now: 'primer', 'concise'",
 )
 @click.pass_context
-def chat(ctx, files, directory, initial_prompt=None, tag=None):
+def chat(ctx, files, directory, initial_prompt=None, vibe=None):
     """Start an interactive chat session with the LLM."""
     setup_logging()
-    
+
     provider_cls = PROVIDERS[ctx.obj["provider"]]
     llm = provider_cls(model=ctx.obj["model"])
 
@@ -181,6 +181,14 @@ def chat(ctx, files, directory, initial_prompt=None, tag=None):
             file_context += read_directory(d)
 
     prompt_type = Prompts.REPL
+    if vibe:
+        if vibe == "primer":
+            prompt_type = Prompts.UNIVERSAL_PRIMER
+        elif vibe == "concise":
+            prompt_type = Prompts.CONCISE
+        else:
+            click.echo("Couldn't find the given prompt, using the default one.")
+            
     console = Console()
     message_history = []
     console.print(
@@ -245,6 +253,7 @@ def chat(ctx, files, directory, initial_prompt=None, tag=None):
             console.print(f"[bold red]Error: {str(e)}[/]")
             continue
 
+
 @cli.command()
 @click.option("-n", help="Show the last N logs")
 def history(n):
@@ -274,8 +283,6 @@ def history(n):
             table.add_row(timestamp, level, query, response)
 
         console.print(table)
-
-
 
 
 if __name__ == "__main__":
