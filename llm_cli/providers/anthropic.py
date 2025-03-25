@@ -29,7 +29,8 @@ class AnthropicProvider(BaseProvider):
         messages = []
         if message_history:
             messages.extend(
-                [{"role": msg.role, "content": msg.content} for msg in message_history]
+                [{"role": msg.role, "content": msg.content}
+                    for msg in message_history]
             )
         messages.append({"role": "user", "content": prompt})
 
@@ -45,7 +46,7 @@ class AnthropicProvider(BaseProvider):
                 "main": MAIN_PROMPT,
                 "primer": UNIVERSAL_PRIMER,
                 "concise": CONCISE,
-                "repl": REPL
+                "repl": REPL,
             }
             data["system"] = prompt_value_map.get(prompt_type.value, REPL)
 
@@ -70,7 +71,8 @@ class AnthropicProvider(BaseProvider):
         messages = []
         if message_history:
             messages.extend(
-                [{"role": msg.role, "content": msg.content} for msg in message_history]
+                [{"role": msg.role, "content": msg.content}
+                    for msg in message_history]
             )
         messages.append({"role": "user", "content": prompt})
 
@@ -87,7 +89,7 @@ class AnthropicProvider(BaseProvider):
                 "main": MAIN_PROMPT,
                 "primer": UNIVERSAL_PRIMER,
                 "concise": CONCISE,
-                "repl": REPL
+                "repl": REPL,
             }
             data["system"] = prompt_value_map.get(prompt_type.value, REPL)
 

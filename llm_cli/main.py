@@ -49,11 +49,10 @@ class ChatSession:
 
     def _get_prompt_type(self, vibe: Optional[str]) -> PromptType:
         """Determine the prompt type based on the vibe setting."""
-        if not vibe:
-            return Prompts.REPL
-
         prompt_types = {"primer": Prompts.UNIVERSAL_PRIMER, "concise": Prompts.CONCISE}
-        return prompt_types.get(vibe, Prompts.REPL)
+        if vibe is None:
+            return Prompts.REPL
+        return prompt_types.get(vibe.lower(), Prompts.REPL)
 
     def _setup_prompt_session(self) -> PromptSession:
         """Set up the prompt session with custom key bindings."""
@@ -197,6 +196,7 @@ def cli(
     ctx.ensure_object(dict)
     ctx.obj["provider"] = provider
     ctx.obj["model"] = model
+    ctx.obj["vibe"] = vibe
 
     if ctx.invoked_subcommand is None:
         ctx.invoke(chat, files=files, directory=directory, vibe=vibe)
@@ -224,6 +224,10 @@ def chat(
 ) -> None:
     """Start an interactive chat session with the LLM."""
     setup_logging()
+
+    # Use vibe from context if not provided directly
+    vibe = vibe or ctx.obj.get("vibe")
+    logging.info(f"Using vibe: {vibe}")
 
     file_context = ""
     if files:
@@ -255,7 +259,7 @@ def history(n: Optional[int]) -> None:
     viewer.display()
 
 
-if __name__ == "__main__":
-    # Click will automatically parse command line args,
-    # so we only need to pass the obj parameter
-    cli(obj={})
+# if __name__ == "__main__":
+#     # Click will automatically parse command line args,
+#     # so we only need to pass the obj parameter
+#     cli()
