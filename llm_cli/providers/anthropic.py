@@ -39,16 +39,15 @@ class AnthropicProvider(BaseProvider):
             "messages": messages,
         }
 
+        # Set the system prompt based on the prompt_type
         if prompt_type:
-            match prompt_type:
-                case Prompts.MAIN:
-                    data["system"] = MAIN_PROMPT
-                case Prompts.UNIVERSAL_PRIMER:
-                    data["system"] = UNIVERSAL_PRIMER
-                case Prompts.CONCISE:
-                    data["system"] = CONCISE
-                case Prompts.REPL:
-                    data["system"] = REPL
+            prompt_value_map = {
+                "main": MAIN_PROMPT,
+                "primer": UNIVERSAL_PRIMER,
+                "concise": CONCISE,
+                "repl": REPL
+            }
+            data["system"] = prompt_value_map.get(prompt_type.value, REPL)
 
         response = requests.post(
             "https://api.anthropic.com/v1/messages", headers=headers, json=data
@@ -82,16 +81,15 @@ class AnthropicProvider(BaseProvider):
             "messages": messages,
         }
 
+        # Set the system prompt based on the prompt_type
         if prompt_type:
-            match prompt_type:
-                case Prompts.MAIN:
-                    data["system"] = MAIN_PROMPT
-                case Prompts.UNIVERSAL_PRIMER:
-                    data["system"] = UNIVERSAL_PRIMER
-                case Prompts.CONCISE:
-                    data["system"] = CONCISE
-                case Prompts.REPL:
-                    data["system"] = REPL
+            prompt_value_map = {
+                "main": MAIN_PROMPT,
+                "primer": UNIVERSAL_PRIMER,
+                "concise": CONCISE,
+                "repl": REPL
+            }
+            data["system"] = prompt_value_map.get(prompt_type.value, REPL)
 
         response = requests.post(
             "https://api.anthropic.com/v1/messages",
