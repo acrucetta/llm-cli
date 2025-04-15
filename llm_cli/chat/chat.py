@@ -15,6 +15,7 @@ from prompt_toolkit.keys import Keys
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
+from mcp import Client
 
 import logging
 
@@ -41,6 +42,9 @@ class ChatSession:
         self.message_history: MessageHistory = []
         self.prompt_type = self._get_prompt_type(vibe)
         self.session = self._setup_prompt_session()
+
+        # MCP Client
+        self.mcp_client = Client()
 
     def _get_prompt_type(self, vibe: Optional[str]) -> PromptType:
         """Determine the prompt type based on the vibe setting."""
