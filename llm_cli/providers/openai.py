@@ -8,7 +8,7 @@ from openai import OpenAI
 class OpenAIProvider(BaseProvider):
     def __init__(self, model=None):
         super().__init__(model)
-        self.model = model or "gpt-4o"
+        self.model = model or "gpt-4.1"
         self.api_key = os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable not set")
